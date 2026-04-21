@@ -1,0 +1,35 @@
+{
+  "name": "istanbul-route-ai-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Istanbul Route AI municipal vehicle tracking backend",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.2.0",
+    "@circle-fin/x402-batching": "^2.1.0",
+    "@google/genai": "^1.50.1",
+    "@x402/core": "^2.9.0",
+    "@x402/evm": "^2.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.4",
+    "express": "^4.21.1",
+    "socket.io": "^4.8.1",
+    "viem": "^2.47.10",
+    "x402-express": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

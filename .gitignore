@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.next/
+out/
+.env
+.env.local
+*.log
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/lib/
+
+# OS
+.DS_Store
+Thumbs.db
+
+.vercel
