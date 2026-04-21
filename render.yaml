@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: istanbul-route-ai-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: ARC_TESTNET_RPC_URL
+        value: https://rpc.testnet.arc.network
+      - key: CONTRACT_ADDRESS
+        value: 0xD117bDB3d1463a1B47561eb74BEa88ebE93B81CF
+      - key: PARKING_CONTRACT_ADDRESS
+        value: 0x198be13482770fa01e36ae199f8e6873ad2f7b91
+      - key: OSRM_URL
+        value: https://router.project-osrm.org
+      - key: ROUTE_VEHICLE_RADIUS_METERS
+        value: "300"
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: AGENT_TX_MODE
+        value: simulated
+      # Secrets — set these in the Render dashboard after creating the Blueprint
+      - key: PRIVATE_KEY
+        sync: false
+      - key: CIRCLE_API_KEY
+        sync: false
+      - key: CIRCLE_ENTITY_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
