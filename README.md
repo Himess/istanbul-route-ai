@@ -8,7 +8,7 @@
 - **Drive (3D Navigation)**: [istanbul-route-ai.vercel.app/drive](https://istanbul-route-ai.vercel.app/drive)
 - **Park (Parking Finder)**: [istanbul-route-ai.vercel.app/park](https://istanbul-route-ai.vercel.app/park)
 - **Istanbul Card (Wallet)**: [istanbul-route-ai.vercel.app/card](https://istanbul-route-ai.vercel.app/card)
-- **Backend API**: [istanbul-route-ai-backend-production.up.railway.app](https://istanbul-route-ai-backend-production.up.railway.app)
+- **Backend API**: [istanbul-route-ai-backend.fly.dev](https://istanbul-route-ai-backend.fly.dev)
 
 ## Hackathon Tracks
 
@@ -98,7 +98,7 @@ generate ~60 Arc settlements and emit ArcScan verification URLs:
 
 ```bash
 # In AGENT_TX_MODE=onchain (needs funded AGENT_PRIVATE_KEY)
-npx tsx scripts/generate50Tx.ts https://istanbul-route-ai-backend-production.up.railway.app
+npx tsx scripts/generate50Tx.ts https://istanbul-route-ai-backend.fly.dev
 ```
 
 ## Circle Infrastructure Used
@@ -251,8 +251,8 @@ AGENT_PRIVATE_KEY=<funded agent wallet for onchain mode>
 
 ### Frontend (.env.local)
 ```
-NEXT_PUBLIC_BACKEND_URL=https://istanbul-route-ai-backend-production.up.railway.app
-NEXT_PUBLIC_WS_URL=https://istanbul-route-ai-backend-production.up.railway.app
+NEXT_PUBLIC_BACKEND_URL=https://istanbul-route-ai-backend.fly.dev
+NEXT_PUBLIC_WS_URL=https://istanbul-route-ai-backend.fly.dev
 NEXT_PUBLIC_CONTRACT_ADDRESS=0xD117bDB3d1463a1B47561eb74BEa88ebE93B81CF
 NEXT_PUBLIC_PARKING_CONTRACT_ADDRESS=0x198be13482770fa01e36ae199f8e6873ad2f7b91
 NEXT_PUBLIC_ARC_CHAIN_ID=5042002
