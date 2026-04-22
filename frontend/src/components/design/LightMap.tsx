@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
 
 const LIGHT_STYLE: maplibregl.StyleSpecification = {
   version: 8,
@@ -10,23 +9,16 @@ const LIGHT_STYLE: maplibregl.StyleSpecification = {
     carto: {
       type: "raster",
       tiles: [
-        "https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png",
+        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
       attribution: "&copy; OpenStreetMap &copy; CARTO",
     },
-    labels: {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-    },
   },
   layers: [
-    { id: "carto", type: "raster", source: "carto", minzoom: 0, maxzoom: 20 },
-    { id: "carto-labels", type: "raster", source: "labels", minzoom: 0, maxzoom: 20 },
+    { id: "carto-base", type: "raster", source: "carto", minzoom: 0, maxzoom: 20 },
   ],
 };
 
@@ -186,5 +178,11 @@ export function LightMap({
     map.fitBounds(bounds, { padding: { top: 140, right: 60, bottom: 360, left: 60 }, duration: 800 });
   }, [route, start, end]);
 
-  return <div ref={containerRef} className={className} />;
+  return (
+    <div
+      ref={containerRef}
+      className={className}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+    />
+  );
 }
