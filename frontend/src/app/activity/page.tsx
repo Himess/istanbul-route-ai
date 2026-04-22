@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/design/BottomNav";
 import { HaloDot } from "@/components/design/HaloDot";
 import { SignalBadge } from "@/components/design/SignalBadge";
 import { useSmartWallet } from "@/hooks/useSmartWallet";
+import { MobileShell } from "@/components/design/MobileShell";
 import { BACKEND_URL, ARCSCAN_URL } from "@/lib/constants";
 
 interface Payment {
@@ -49,7 +50,8 @@ export default function ActivityPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen w-screen bg-ivory pb-[120px]">
+    <MobileShell>
+    <div className="relative w-full h-full overflow-y-auto bg-ivory pb-[120px]">
       <TopBar balance={wallet.balance} delta={wallet.delta} tone={wallet.status === "low" ? "low" : "normal"} />
 
       <div className="absolute left-3 right-3 top-[112px] z-20 max-w-[420px] mx-auto">
@@ -138,6 +140,7 @@ export default function ActivityPage() {
 
       <BottomNav />
     </div>
+    </MobileShell>
   );
 }
 

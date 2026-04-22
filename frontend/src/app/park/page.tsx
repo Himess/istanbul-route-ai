@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/design/BottomNav";
 import { LightMap } from "@/components/design/LightMap";
 import { HaloDot } from "@/components/design/HaloDot";
 import { useSmartWallet } from "@/hooks/useSmartWallet";
+import { MobileShell } from "@/components/design/MobileShell";
 import { BACKEND_URL } from "@/lib/constants";
 
 interface Lot {
@@ -62,7 +63,7 @@ export default function ParkPage() {
 
   if (!wallet.mode) {
     return (
-      <div className="relative h-screen w-screen overflow-hidden bg-ivory flex items-center justify-center p-6">
+      <MobileShell><div className="relative w-full h-full overflow-hidden bg-ivory flex items-center justify-center p-6">
         <div className="max-w-[420px] w-full text-center space-y-3">
           <div className="font-serif text-[32px] leading-[1.05] ink">Set up a wallet</div>
           <div className="text-[13px] ink-3">Parking availability queries cost $0.0001 USDC each. Set up your wallet in Drive first.</div>
@@ -71,7 +72,7 @@ export default function ParkPage() {
           </Link>
         </div>
         <BottomNav />
-      </div>
+      </div></MobileShell>
     );
   }
 
@@ -83,7 +84,8 @@ export default function ParkPage() {
   }));
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-ivory">
+    <MobileShell>
+    <div className="relative w-full h-full overflow-hidden bg-ivory">
       <LightMap
         center={[CENTER.lng, CENTER.lat]}
         zoom={14}
@@ -211,5 +213,6 @@ export default function ParkPage() {
 
       <BottomNav />
     </div>
+    </MobileShell>
   );
 }

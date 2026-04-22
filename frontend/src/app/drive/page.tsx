@@ -9,6 +9,7 @@ import { SignalBadge, badgeForSignal } from "@/components/design/SignalBadge";
 import { AgentWhisper } from "@/components/design/AgentWhisper";
 import { HaloDot } from "@/components/design/HaloDot";
 import { useSmartWallet } from "@/hooks/useSmartWallet";
+import { MobileShell } from "@/components/design/MobileShell";
 import { BACKEND_URL } from "@/lib/constants";
 import type { RouteResult, AgentDecision } from "@/types";
 
@@ -81,7 +82,8 @@ export default function DrivePage() {
   const agent: AgentDecision | null = routeResult?.agent || null;
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-ivory">
+    <MobileShell>
+    <div className="relative w-full h-full overflow-hidden bg-ivory">
       <LightMap
         center={mapCenter}
         zoom={phase === "navigating" ? 15 : 13}
@@ -309,6 +311,7 @@ export default function DrivePage() {
 
       <BottomNav />
     </div>
+    </MobileShell>
   );
 }
 

@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/design/BottomNav";
 import { MicroSpark } from "@/components/design/MicroSpark";
 import { HaloDot } from "@/components/design/HaloDot";
 import { useSmartWallet } from "@/hooks/useSmartWallet";
+import { MobileShell } from "@/components/design/MobileShell";
 import { BACKEND_URL } from "@/lib/constants";
 
 interface LedgerEntry {
@@ -94,7 +95,7 @@ export default function CardPage() {
 
   if (!wallet.mode) {
     return (
-      <div className="relative h-screen w-screen overflow-hidden bg-ivory flex items-center justify-center p-6">
+      <MobileShell><div className="relative w-full h-full overflow-hidden bg-ivory flex items-center justify-center p-6">
         <div className="max-w-[420px] w-full text-center space-y-3">
           <div className="font-serif text-[32px] leading-[1.05] ink">Set up a wallet</div>
           <div className="text-[13px] ink-3">Go to the Drive tab to connect MetaMask or create a managed account.</div>
@@ -106,12 +107,13 @@ export default function CardPage() {
           </Link>
         </div>
         <BottomNav />
-      </div>
+      </div></MobileShell>
     );
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-ivory">
+    <MobileShell>
+    <div className="relative w-full h-full overflow-hidden bg-ivory">
       <div
         className="absolute inset-0"
         style={{
@@ -219,6 +221,7 @@ export default function CardPage() {
 
       <BottomNav />
     </div>
+    </MobileShell>
   );
 }
 

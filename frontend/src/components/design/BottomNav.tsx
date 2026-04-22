@@ -46,8 +46,8 @@ export function BottomNav() {
   );
 
   return (
-    <div className="fixed bottom-[22px] left-0 right-0 z-30 px-4">
-      <div className="bg-paper/90 backdrop-blur-xl border border-line-2 rounded-[28px] shadow-3 h-[68px] flex items-center px-2 relative max-w-[420px] mx-auto">
+    <div className="absolute bottom-[22px] left-0 right-0 z-30 px-4">
+      <div className="bg-paper/90 backdrop-blur-xl border border-line-2 rounded-[28px] shadow-3 h-[68px] flex items-center px-2 relative">
         <motion.div
           layout
           transition={{ type: "spring", stiffness: 380, damping: 32 }}
