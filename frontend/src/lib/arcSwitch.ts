@@ -6,7 +6,7 @@ export async function ensureArcTestnet(): Promise<void> {
   if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("MetaMask not available");
   }
-  const chainIdHex = "0x4CF0A2"; // 5042002
+  const chainIdHex = "0x4CEF52"; // 5042002 (Arc Testnet)
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
