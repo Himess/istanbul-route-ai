@@ -424,41 +424,85 @@ const Slide08: ComponentType = () => {
   );
 };
 
-const Slide09: ComponentType = () => (
-  <SlideShell label="08 · Economic proof">
-    <h2 className="font-serif text-[52px] leading-[1.0] ink tracking-tight max-w-[900px] mb-10">
-      Why this can&apos;t run <span className="italic">on Ethereum.</span>
-    </h2>
-    <div className="flex-1 grid grid-cols-2 gap-8">
-      <div className="rounded-[22px] border border-line p-7" style={{ background: "oklch(98% 0.02 30)" }}>
-        <div className="text-[11px] font-mono ink-3 tracking-[.14em] uppercase">Ethereum L1</div>
-        <div className="font-mono text-[60px] ink tabular-nums mt-2">$0.50</div>
-        <div className="text-[12px] font-mono ink-3">gas per tx</div>
-        <div className="mt-6 pt-4 border-t border-line space-y-2 text-[13px]">
-          <div className="flex justify-between"><span className="ink-2">Route query (5 settlements)</span><span className="font-mono ink">$2.50 gas</span></div>
-          <div className="flex justify-between"><span className="ink-2">Service fee collected</span><span className="font-mono ink">$0.0005</span></div>
-          <div className="flex justify-between pt-2 border-t border-line"><span className="ink font-medium">Margin</span><span className="font-mono font-semibold" style={{ color: "var(--danger)" }}>−$2.4995</span></div>
+const Slide09: ComponentType = () => {
+  const axes = [
+    {
+      k: "Gas per tx",
+      eth: "$0.50",
+      arc: "$0.000001",
+      note: "10,000× cheaper — the only reason sub-cent pricing closes.",
+    },
+    {
+      k: "Finality",
+      eth: "~12 s (prob.) · ~15 min (safe)",
+      arc: "Deterministic sub-second",
+      note: "Agents can confirm and chain calls in real time.",
+    },
+    {
+      k: "Gas token",
+      eth: "ETH — two-token dance",
+      arc: "USDC — native",
+      note: "No ETH top-ups. Stablecoin-only UX.",
+    },
+    {
+      k: "Fee predictability",
+      eth: "Volatile · MEV-exposed",
+      arc: "Dollar-denominated · deterministic",
+      note: "A $0.0005 query stays $0.0005 next block.",
+    },
+    {
+      k: "Agent-native primitives",
+      eth: "Retrofit · third-party wrappers",
+      arc: "Gateway · x402 · Wallets built-in",
+      note: "Pay-per-call, silent debit, cross-chain balance — ship-ready.",
+    },
+  ];
+  return (
+    <SlideShell label="08 · Economic & design proof">
+      <h2 className="font-serif text-[48px] leading-[1.0] ink tracking-tight max-w-[900px] mb-2">
+        It&apos;s not only gas — it&apos;s <span className="italic">built for agents.</span>
+      </h2>
+      <p className="text-[14px] ink-3 max-w-[720px] mb-6">
+        Ethereum was designed for capital markets. Arc was designed for the agentic economy.
+        Five axes where that shows.
+      </p>
+      <div className="flex-1 rounded-[22px] border border-line bg-paper overflow-hidden">
+        <div className="grid grid-cols-12 text-[10px] font-mono ink-3 tracking-[.14em] uppercase px-5 py-3 border-b border-line bg-ivory-2/50">
+          <div className="col-span-3">Axis</div>
+          <div className="col-span-3">Ethereum L1</div>
+          <div className="col-span-3">Arc</div>
+          <div className="col-span-3">Why it matters</div>
         </div>
-        <div className="mt-6 text-[12px] ink-3 italic">
-          The model dies in the gas fee.
-        </div>
+        {axes.map((a, i) => (
+          <div
+            key={a.k}
+            className={`grid grid-cols-12 items-center px-5 py-3 text-[13px] ${
+              i < axes.length - 1 ? "border-b border-line" : ""
+            }`}
+          >
+            <div className="col-span-3 ink font-medium">{a.k}</div>
+            <div
+              className="col-span-3 font-mono tabular-nums"
+              style={{ color: "oklch(48% 0.14 30)" }}
+            >
+              {a.eth}
+            </div>
+            <div
+              className="col-span-3 font-mono tabular-nums"
+              style={{ color: "var(--teal-ink)" }}
+            >
+              {a.arc}
+            </div>
+            <div className="col-span-3 ink-2 text-[12px] leading-snug">{a.note}</div>
+          </div>
+        ))}
       </div>
-      <div className="rounded-[22px] border p-7" style={{ background: "var(--teal-tint)", borderColor: "oklch(85% 0.04 200)" }}>
-        <div className="text-[11px] font-mono tracking-[.14em] uppercase" style={{ color: "var(--teal-ink)" }}>Arc + Nanopayments</div>
-        <div className="font-mono text-[60px] ink tabular-nums mt-2">$0.000001</div>
-        <div className="text-[12px] font-mono ink-3">gas per tx</div>
-        <div className="mt-6 pt-4 border-t border-line space-y-2 text-[13px]">
-          <div className="flex justify-between"><span className="ink-2">Route query (5 settlements)</span><span className="font-mono ink">$0.000005 gas</span></div>
-          <div className="flex justify-between"><span className="ink-2">Service fee collected</span><span className="font-mono ink">$0.0005</span></div>
-          <div className="flex justify-between pt-2 border-t border-line"><span className="ink font-medium">Margin</span><span className="font-mono font-semibold" style={{ color: "var(--good)" }}>+$0.000495</span></div>
-        </div>
-        <div className="mt-6 text-[12px] font-medium" style={{ color: "var(--teal-ink)" }}>
-          10,000× cheaper. The agentic economy breathes.
-        </div>
+      <div className="mt-4 text-center text-[13px] ink-2">
+        <span className="font-medium">Gas was just the first wall. Arc removes four more.</span>
       </div>
-    </div>
-  </SlideShell>
-);
+    </SlideShell>
+  );
+};
 
 const Slide10: ComponentType = () => (
   <SlideShell label="09 · On-chain proof">
@@ -667,16 +711,19 @@ const Slide15: ComponentType = () => (
         </div>
       </div>
       <div className="col-span-2 flex flex-col items-center gap-4">
-        <div className="w-[260px] h-[260px] rounded-3xl bg-paper border border-line shadow-3 p-6 flex items-center justify-center">
-          <div className="text-center">
-            <div className="font-serif text-[28px] ink leading-none">QR</div>
-            <div className="mt-2 text-[10px] font-mono ink-3 tracking-[.14em] uppercase">
-              istanbul-route-ai.vercel.app
-            </div>
-            <div className="mt-6 text-[10px] font-mono ink-3">(generate via qr-code.com)</div>
-          </div>
+        <div className="w-[260px] h-[260px] rounded-3xl bg-paper border border-line shadow-3 p-4 flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=https%3A%2F%2Fistanbul-route-ai.vercel.app"
+            alt="Scan to open Istanbul Route AI"
+            width={232}
+            height={232}
+            className="rounded-xl"
+          />
         </div>
-        <div className="text-[11px] font-mono ink-3 tracking-[.14em] uppercase">Scan with phone</div>
+        <div className="text-[11px] font-mono ink-3 tracking-[.14em] uppercase">
+          Scan · istanbul-route-ai.vercel.app
+        </div>
       </div>
     </div>
   </SlideShell>
