@@ -103,6 +103,8 @@ export default function CardPage() {
 
   const low = wallet.status === "low";
   const bal = wallet.balance;
+  const sellerAddress = "0xF505e2E71df58D7244189072008f25f6b6aaE5ae";
+  const isSeller = wallet.address?.toLowerCase() === sellerAddress.toLowerCase();
 
   if (!wallet.mode) {
     return (
@@ -143,6 +145,13 @@ export default function CardPage() {
       />
 
       <div className="absolute left-3 right-3 top-[112px] bottom-[102px] z-20 overflow-y-auto max-w-[420px] mx-auto pb-4">
+        {isSeller && (
+          <div className="mb-3 rounded-2xl p-3 border text-[12px] leading-snug" style={{ background: "oklch(97% 0.04 55)", borderColor: "oklch(86% 0.08 55)", color: "oklch(35% 0.12 40)" }}>
+            <strong>Warning:</strong> this wallet is the app&apos;s own treasury.
+            Gateway refuses self-payments. Create a new MetaMask account and
+            use that for silent debits.
+          </div>
+        )}
         <div
           className="rounded-[28px] p-6 relative overflow-hidden border"
           style={{
@@ -155,7 +164,7 @@ export default function CardPage() {
         >
           <div className="flex items-center justify-between">
             <div className="text-[10px] font-mono ink-3 tracking-[.12em] uppercase">
-              Smart wallet · Arc
+              Gateway balance · spendable silently
             </div>
             <div className="chip bg-paper/70 ink-2 border border-line">✦ SILENT</div>
           </div>
@@ -165,6 +174,9 @@ export default function CardPage() {
             <span className="font-mono text-[56px] font-medium ink tabular-nums leading-none tracking-tight">
               {bal.toFixed(4)}
             </span>
+          </div>
+          <div className="mt-1 text-[11px] font-mono ink-3">
+            In wallet · <span className="ink-2">{wallet.walletBalance.toFixed(4)}</span> USDC (not yet deposited)
           </div>
 
           {low ? (
