@@ -74,7 +74,7 @@ export default function ParkPage() {
       const url = new URL(`${BACKEND_URL}/api/parking/availability`);
       url.searchParams.set("lat", String(pickedPoint.lat));
       url.searchParams.set("lng", String(pickedPoint.lng));
-      url.searchParams.set("radius", "1200");
+      url.searchParams.set("radius", "2000");
       const res = await payFetchRef.current(url.toString(), { method: "GET" }, 0.0001);
       if (res.status === 402) {
         throw new Error("Payment verification failed. Deposit USDC first.");
@@ -84,6 +84,12 @@ export default function ParkPage() {
       const lots = (data.parkingLots || []) as Lot[];
       const totalCap = lots.reduce((s, l) => s + l.capacity, 0);
       const totalEmpty = lots.reduce((s, l) => s + l.emptyCapacity, 0);
+      // Driver's priority: lots with the most free spots first. Break ties
+      // with distance (closer wins when empty counts match).
+      const ranked = [...lots].sort((a, b) => {
+        if (b.emptyCapacity !== a.emptyCapacity) return b.emptyCapacity - a.emptyCapacity;
+        return a.distance - b.distance;
+      });
       setResult({
         centerLat: pickedPoint.lat,
         centerLng: pickedPoint.lng,
@@ -91,7 +97,7 @@ export default function ParkPage() {
         totalLots: lots.length,
         totalCapacity: totalCap,
         totalAvailable: totalEmpty,
-        lots: lots.slice(0, 5),
+        lots: ranked.slice(0, 5),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -205,7 +211,7 @@ export default function ParkPage() {
                     Where <span className="italic">do you need</span> a spot?
                   </div>
                   <div className="text-[12px] ink-3 mt-1">
-                    Tap the map. We query ISPARK within 1.2 km and return real-time availability.
+                    Tap the map. We query ISPARK within 2 km and return real-time availability, ranked by free spots.
                   </div>
                 </div>
 
@@ -357,7 +363,7 @@ export default function ParkPage() {
                   ))}
                   {result.lots.length === 0 && (
                     <div className="py-6 text-center text-[12px] ink-3">
-                      No ISPARK lots within 1.2 km. Tap a different spot.
+                      No ISPARK lots within 2 km. Tap a different spot.
                     </div>
                   )}
                 </div>
