@@ -51,6 +51,40 @@ const VEHICLE_COLOR: Record<string, string> = {
   police:        "oklch(65% 0.1 290)",  // iris
 };
 
+const TYPE_LABEL: Record<string, string> = {
+  bus:           "Bus",
+  garbage_truck: "Garbage truck",
+  service:       "Service vehicle",
+  ambulance:     "Ambulance",
+  police:        "Police",
+};
+
+// Simulator IDs are of shape "IBB-{TYPE}-{ROUTE}-{NUM}". The route code maps
+// to a human-readable Istanbul corridor.
+const ROUTE_LABEL: Record<string, string> = {
+  E5: "E-5 Bakırköy → Güngören",
+  FT: "Fatih · Eminönü → Topkapı",
+  BS: "Beşiktaş → Levent",
+  BY: "Beyoğlu area",
+  KD: "Kadıköy area",
+  SS: "Şişli · Mecidiyeköy",
+  TK: "Taksim · Dolmabahçe",
+  EM: "Eminönü · Sultanahmet",
+  US: "Üsküdar · Altunizade",
+  BP: "Bayrampaşa → Esenler",
+  AT: "Ataşehir · Asian inland",
+  SR: "Sarıyer · Northern Bosphorus",
+  KU: "Kadıköy emergency route",
+  LV: "Levent · Maslak",
+  ML: "Maltepe · Kartal",
+};
+
+function resolveRouteLabel(id: string): string | null {
+  const parts = id.split("-");
+  if (parts.length < 4) return null;
+  return ROUTE_LABEL[parts[2]] || null;
+}
+
 export function LightMap({
   center = [28.99, 41.03],
   zoom = 12,
@@ -207,13 +241,18 @@ export function LightMap({
       for (const v of live) {
         seen.add(v.id);
         const extras = v as unknown as { plate?: string; operator?: string; garage?: string };
+        const typeLabel = TYPE_LABEL[v.type] || v.type;
+        const routeLabel = resolveRouteLabel(v.id);
         const titleLines = [
-          `${v.type.toUpperCase()} · ${v.zone}`,
+          `${typeLabel} · ${v.zone}`,
           `Speed: ${Math.round(v.speed)} km/h · ${v.status}`,
+          routeLabel ? `Route: ${routeLabel}` : "",
           extras.plate ? `Plate: ${extras.plate}` : "",
           extras.operator ? `Operator: ${extras.operator}` : "",
           extras.garage ? `Garage: ${extras.garage}` : "",
-          v.source === "ibb" ? "Live · İBB/İETT feed" : "Municipal fleet",
+          v.source === "ibb"
+            ? "Source: IETT live (IBB)"
+            : "Source: Municipal fleet simulation",
         ].filter(Boolean).join("\n");
 
         let marker = vehicleMarkersRef.current.get(v.id);
