@@ -92,6 +92,10 @@ export default function DrivePage() {
       setError("Choose a wallet first to unlock.");
       return;
     }
+    if (wallet.balance < 0.0006) {
+      setError("Insufficient Gateway balance. Deposit USDC in the Card tab first.");
+      return;
+    }
     setUnlocking(true);
     setError(null);
     try {
@@ -107,6 +111,9 @@ export default function DrivePage() {
         },
         0.0005,
       );
+      if (res.status === 402) {
+        throw new Error("Payment verification failed. Deposit USDC in the Card tab first.");
+      }
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Route failed");
 
@@ -377,27 +384,42 @@ export default function DrivePage() {
                 </div>
 
                 <div className="px-4 pt-4 pb-4">
-                  <button
-                    onClick={unlockRoute}
-                    disabled={unlocking}
-                    className="w-full h-[54px] rounded-2xl flex items-center justify-center gap-2 font-medium text-[15px] shadow-2 text-white disabled:opacity-70"
-                    style={{
-                      background:
-                        "linear-gradient(180deg, oklch(62% 0.09 200), oklch(55% 0.09 200))",
-                    }}
-                  >
-                    {unlocking ? (
-                      <span className="flex items-center gap-2">
-                        <HaloDot /> Agent reasoning…
-                      </span>
-                    ) : (
-                      <>
-                        Unlock AI route · <span className="font-mono">$0.0005</span>
-                      </>
-                    )}
-                  </button>
+                  {wallet.balance < 0.0006 ? (
+                    <a
+                      href="/card"
+                      className="w-full h-[54px] rounded-2xl flex items-center justify-center gap-2 font-medium text-[14px] shadow-2 text-white"
+                      style={{
+                        background:
+                          "linear-gradient(180deg, oklch(65% 0.1 290), oklch(55% 0.1 290))",
+                      }}
+                    >
+                      Deposit USDC to Gateway first →
+                    </a>
+                  ) : (
+                    <button
+                      onClick={unlockRoute}
+                      disabled={unlocking}
+                      className="w-full h-[54px] rounded-2xl flex items-center justify-center gap-2 font-medium text-[15px] shadow-2 text-white disabled:opacity-70"
+                      style={{
+                        background:
+                          "linear-gradient(180deg, oklch(62% 0.09 200), oklch(55% 0.09 200))",
+                      }}
+                    >
+                      {unlocking ? (
+                        <span className="flex items-center gap-2">
+                          <HaloDot /> Agent reasoning…
+                        </span>
+                      ) : (
+                        <>
+                          Unlock AI route · <span className="font-mono">$0.0005</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   <div className="mt-2 text-center text-[10px] font-mono ink-3">
-                    Payment settles on Arc · goes to municipality treasury
+                    {wallet.balance < 0.0006
+                      ? `Gateway balance: ${wallet.balance.toFixed(4)} USDC — top up in Card`
+                      : "Payment settles on Arc · goes to municipality treasury"}
                   </div>
                 </div>
               </div>
