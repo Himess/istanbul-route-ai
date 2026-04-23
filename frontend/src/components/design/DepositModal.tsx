@@ -76,6 +76,9 @@ export function DepositModal({ open, onClose, userAddress, initialAmount = "10.0
 
     try {
       setError(null);
+      // Make sure wallet is on Arc Testnet before doing anything
+      const { ensureArcTestnet } = await import("@/lib/arcSwitch");
+      await ensureArcTestnet();
       const viem = await import("viem");
       const { arcTestnet } = await import("@/lib/viemChains");
 

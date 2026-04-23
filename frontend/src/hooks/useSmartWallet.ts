@@ -126,6 +126,9 @@ export function useSmartWallet() {
       } as Parameters<NonNullable<typeof window.ethereum>["request"]>[0])) as string[];
       const addr = accounts?.[0];
       if (!addr) throw new Error("No account returned");
+      // Ensure user is on Arc Testnet (will prompt to switch or add the network)
+      const { ensureArcTestnet } = await import("@/lib/arcSwitch");
+      await ensureArcTestnet();
       localStorage.setItem(LS.mode, "metamask");
       localStorage.setItem(LS.address, addr);
       localStorage.removeItem(LS.sessionId);
