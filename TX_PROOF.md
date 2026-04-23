@@ -1,11 +1,86 @@
 # On-chain Transaction Proof — Istanbul Route AI
 
-**71 real on-chain transactions on Arc Testnet** for Circle Nanopayments Hackathon submission.
+**126 real on-chain transactions on Arc Testnet** for Circle Nanopayments Hackathon submission — 55 executed **through the Circle Developer Console / Programmable Wallet SDK** (satisfying the "at least one transaction executed via the Circle Developer Console" rule), and 71 direct Arc tx through the agent's settlement path.
 
-- **Requirement:** ≥50 on-chain transactions in demo
-- **Delivered:** **71** verifiable transactions
+- **Requirement:** ≥50 on-chain tx + ≥1 via Circle Developer Console
+- **Delivered:** **55 via Circle Programmable Wallet SDK** + **71 via agent settlement path** = **126 total**
 - **Network:** Arc Testnet (chainId 5042002)
 - **Block explorer:** https://testnet.arcscan.app
+- **Circle Console:** https://console.circle.com/wallets/dev/transactions (filter by wallet `0x4cc48ea31173c5f14999222962a900ae2e945a1a`)
+
+## Section A — 55 tx via Circle Programmable Wallet SDK
+
+Each of these 55 transactions was signed by Circle's MPC infrastructure via `@circle-fin/developer-controlled-wallets` → `client.createTransaction(...)`. They appear in the **Circle Developer Console → Transactions** tab AND on ArcScan, proving the full Circle-native path.
+
+- **Circle Dev-Controlled Wallet:** `7f5471f0-4261-5b00-836b-9a3746d13490`
+- **Wallet address:** `0x4cc48ea31173c5f14999222962a900ae2e945a1a` (ARC-TESTNET)
+- **Destination (municipality):** `0xF505e2E71df58D7244189072008f25f6b6aaE5ae`
+- **Amount per tx:** 0.0001 USDC
+- **Script:** `backend/scripts/circleSdkSettlements.ts`
+
+| # | Tool | ArcScan |
+|---|---|---|
+|  1 | traffic_snapshot | https://testnet.arcscan.app/tx/0xef0406f6f84caf882f66de3b423dcd519a74a5a5d958a46c597936e279efe74c |
+|  2 | iett_density | https://testnet.arcscan.app/tx/0x3b8b52ee962f0d994ce6517e121a198cf0810a5c2b587ba020f1bfb32898ba4b |
+|  3 | incidents_on_route | https://testnet.arcscan.app/tx/0x893568da36051901755dc3178973f2fe78ee2bc02163f464ac3269235150b00f |
+|  4 | weather | https://testnet.arcscan.app/tx/0x759055775bd6ea1b6b034c3c19d4964209482d49d921fc3d23cb3df672bf7a3e |
+|  5 | parking_near_destination | https://testnet.arcscan.app/tx/0x557a93133be795b981261225963c948d0519a254d40f3ce23e5c0a3cd03b6200 |
+|  6 | time_context | https://testnet.arcscan.app/tx/0xa0ff407a65870e8b520606fd771f68e8d4a9350c7e56be5a76a5ed498c1ec53e |
+|  7 | iett_density | https://testnet.arcscan.app/tx/0xa3e75deb20bc111800c601b3355b325bc5197b4425055755f0efa0b41bc63340 |
+|  8 | weather | https://testnet.arcscan.app/tx/0x7aba2eb4c2ff22034f30f16ed25a6538054c5a005626701b54d87adee204f521 |
+|  9 | time_context | https://testnet.arcscan.app/tx/0xea4765788130895bce6e2a1225af08234e3cd5323437f1269ccd4c70b77e2b01 |
+| 10 | iett_density | https://testnet.arcscan.app/tx/0xf7a9150e0869df70698eaa71d2fc747150eabfdef1b40ec7dcbd2a11457de39d |
+| 11 | parking_near_destination | https://testnet.arcscan.app/tx/0x8225b7d66e289806babf4f58735dd2efba8899548be131fc4b31c02d5c834191 |
+| 12 | time_context | https://testnet.arcscan.app/tx/0xfb13bd302b0ce0a2fa7f37074a1ca3b7c6dca1f5629789d90b91b4d6a889ef1f |
+| 13 | traffic_snapshot | https://testnet.arcscan.app/tx/0x76730c2514340da94c51eedd433fce241291118076ab53097fde4c8700b1c347 |
+| 14 | iett_density | https://testnet.arcscan.app/tx/0xb12eb470565e971ce886c5023659a5fefbb03d4c79129342d18635efa2e4f724 |
+| 15 | incidents_on_route | https://testnet.arcscan.app/tx/0x47d3aaa9dc65df5b46a8057cae70b20fab64dcbfd06e632ca74624f9ee9f9de9 |
+| 16 | weather | https://testnet.arcscan.app/tx/0x4dabcb8067bb378ece4e30b89c60e8af1d67bc646dc29938c4dd97f1040cf7e5 |
+| 17 | parking_near_destination | https://testnet.arcscan.app/tx/0x44a66444ea5f66217e339fe1f476bc2dbe2435c5508911c97bf04256e99863b1 |
+| 18 | time_context | https://testnet.arcscan.app/tx/0x70b101b2d08700986af6986ae0ceb2f17c7a706456a264eacd1c91e2d3ee314f |
+| 19 | traffic_snapshot | https://testnet.arcscan.app/tx/0xed2af9efa05d53b5afb4927ea1b6dd248290734b0a7f6c8299368cbbbeb6dedc |
+| 20 | iett_density | https://testnet.arcscan.app/tx/0xce78bae6a08043b5072203c4034bc37792b6611858194305732233e24f7f937d |
+| 21 | incidents_on_route | https://testnet.arcscan.app/tx/0x5ccef38d4a29e7b3e1dd0dfdfe201c5146db3e890e90e72b3f02cd183e5eb427 |
+| 22 | weather | https://testnet.arcscan.app/tx/0x95fed1417b3a85b032f7b885c802da5bd3547dea2e9912ad5188ef7e7ece909f |
+| 23 | parking_near_destination | https://testnet.arcscan.app/tx/0xde360f182a3c7ae6d0bc2acd0323cf6dbf3d7b1cabe69dfe4fca31577c02cae8 |
+| 24 | time_context | https://testnet.arcscan.app/tx/0xfed4b3d9cac1aac4f2d93abb086d28d8dfb63dc2372060a95eb2c79bf22b38bb |
+| 25 | traffic_snapshot | https://testnet.arcscan.app/tx/0xc7a45c89a5224faa322d8fb46d6ac7531c16056270aef890e6b92e331e8dce44 |
+| 26 | iett_density | https://testnet.arcscan.app/tx/0x1f2bfc46f58c97da32db836f6b40f41c2a19aaf25a5befdfb19ee2a11b901dc3 |
+| 27 | incidents_on_route | https://testnet.arcscan.app/tx/0xaf4226e4fb89b3ed39d5ffcaa3c87ce516e0e0332550733321f31b65e3caeec8 |
+| 28 | weather | https://testnet.arcscan.app/tx/0x537a6846feb21ef0050a6860a4c9d1c41572d1c3bdc526166a9696e54c3a31e1 |
+| 29 | parking_near_destination | https://testnet.arcscan.app/tx/0xe2c59601ed012cde8e2a5d810d09c2fecccaa0819470fbb10e12b8b329f72396 |
+| 30 | time_context | https://testnet.arcscan.app/tx/0xb4b5c467bed34f253f0a5564645bd1e85967d723cff7010c0b625de27317534c |
+| 31 | traffic_snapshot | https://testnet.arcscan.app/tx/0x3143c2de9f83851ea5a92e3a651167215a5d3d5f08e02fa92bf44c8132d84250 |
+| 32 | iett_density | https://testnet.arcscan.app/tx/0x4fb7ec07834a3ceaab62abfade78a0b8a336df7bdc400f893efaf505e9a28141 |
+| 33 | incidents_on_route | https://testnet.arcscan.app/tx/0x1c74403c9434b06c6d4999e38865ef889239ef483a95100c24e38d569846360b |
+| 34 | weather | https://testnet.arcscan.app/tx/0x40b229949904202321c22dc26a8217f63e0991abf4e5da32dd172bb23247ad71 |
+| 35 | parking_near_destination | https://testnet.arcscan.app/tx/0x38a179324d3cf1c0aa637bd4e549dc43f93bfdbdddeb80f2e94201c62e1cc5fb |
+| 36 | time_context | https://testnet.arcscan.app/tx/0x815dd696d2dd2f511fdeb76637cd0cd1339890f589a7436dd59218abc6f94850 |
+| 37 | traffic_snapshot | https://testnet.arcscan.app/tx/0x5d49376520a287fac36fc75044b03f80d59e8d721c203ec96bbbdb36ffbcf460 |
+| 38 | iett_density | https://testnet.arcscan.app/tx/0x7a053688b1ce0eb5f957548819b00457b6b65423d986c9bcc73059f7c199e929 |
+| 39 | incidents_on_route | https://testnet.arcscan.app/tx/0xd5a17f82779e368a9343cdd247f3fbff69013e7151acd0467d5be278f0439f0b |
+| 40 | weather | https://testnet.arcscan.app/tx/0xfc22786135c77a1af77521a170b4b544234e18c377abb4de9d535345aa7dda4c |
+| 41 | parking_near_destination | https://testnet.arcscan.app/tx/0x94a533d796f0820f0afb07538d4ad8da8fbe34a1f762b9edf77d026a5cbb0768 |
+| 42 | time_context | https://testnet.arcscan.app/tx/0x7f6dc936fd9011ef30469745e54429e99a9f3b6c06ee1a2a46eeb87e5a1b42d4 |
+| 43 | traffic_snapshot | https://testnet.arcscan.app/tx/0x7a93af0c5537e9a9efb055cdf9efa85c5833dd84cb5b443faff7d13894e468ae |
+| 44 | iett_density | https://testnet.arcscan.app/tx/0xcf1ad92ce5ddd82f82d9f21aff8c426e0242aa2afd494768b1908478260521c5 |
+| 45 | incidents_on_route | https://testnet.arcscan.app/tx/0xb4e8a32269eb201e539ffabd3b0c57dc22099325d7fc9de3022d7e94364d4a9a |
+| 46 | weather | https://testnet.arcscan.app/tx/0x5a49ee5663f74356329a6ae560532246861fd1b0f288455475d4d0596e454967 |
+| 47 | parking_near_destination | https://testnet.arcscan.app/tx/0x60ad7db65841c3cf11ac254546744ad3fff6e2c54ddd1811f5b5c864d7d0d43c |
+| 48 | time_context | https://testnet.arcscan.app/tx/0xd101b57bfabe79cbaf1d36cb02e48ec42b44acaa87827e36095371ade7a4e566 |
+| 49 | traffic_snapshot | https://testnet.arcscan.app/tx/0xc11f6b73dcf3ec7deaa35cfd2dfd56e5f1fd213e5d43d8964ef8df706bf285e0 |
+| 50 | iett_density | https://testnet.arcscan.app/tx/0xbe33d89e85a1d062b8d0c731c2984efe6eddad943d2a1fe2ab7d3860e00f2327 |
+| 51 | incidents_on_route | https://testnet.arcscan.app/tx/0x8af1ea4338d0d991af565df52c9c65c68b727a327c2f824a1299d38aceda0f7d |
+| 52 | weather | https://testnet.arcscan.app/tx/0xdf6b432b3f6200ad41d8c3e6aa8e3bb6bf7148aa04ffd576162d9cc6722a6434 |
+| 53 | parking_near_destination | https://testnet.arcscan.app/tx/0x03a653ee7fb8f5d8e25ffde676e969df5990c8466306199901c8469c5f3145f2 |
+| 54 | time_context | https://testnet.arcscan.app/tx/0xc8fc6aad8cac057657709edcda89f1b4c69b0b4bad86f938349b739035f4513b |
+| 55 | traffic_snapshot | https://testnet.arcscan.app/tx/0x3ddd942d17e5a0cd32ee5dda5e281ba9c4f5c29004dfc971c664bff4c9c9ce20 |
+
+JSON machine-readable list: `backend/scripts/circle-sdk-tx.json`
+
+---
+
+## Section B — 71 tx via agent settlement path (viem/sendTransaction)
 
 ## Actors
 
