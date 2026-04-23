@@ -40,6 +40,13 @@ export interface LightMapProps {
   onMapClick?: (lat: number, lng: number) => void;
   mapClickEnabled?: boolean;
   follow?: boolean;
+  /** Shift camera center in screen pixels [x, y]. Positive y pushes the
+   *  geographic center UP on screen — useful for driver-view nav where the
+   *  start pin should sit in the lower third of the map. */
+  centerOffset?: [number, number];
+  /** When true, automatically frame start+route+end on map. Turn OFF while
+   *  navigating so the camera doesn't jump around. */
+  fitWhenIdle?: boolean;
   className?: string;
 }
 
@@ -99,6 +106,8 @@ export function LightMap({
   vehicles,
   onMapClick,
   mapClickEnabled = false,
+  centerOffset = [0, 0],
+  fitWhenIdle = true,
   className = "absolute inset-0",
 }: LightMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -141,12 +150,16 @@ export function LightMap({
     canvas.style.cursor = mapClickEnabled ? "crosshair" : "";
   }, [mapClickEnabled]);
 
-  // Sync camera
+  // Sync camera — honours centerOffset so the "you are here" pin can sit in
+  // the lower portion of the viewport while the road ahead fills the screen.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    map.easeTo({ center, zoom, pitch, bearing, duration: 600 });
-  }, [center, zoom, pitch, bearing]);
+    const padding = centerOffset[1] > 0
+      ? { top: 0, right: 0, bottom: centerOffset[1] * 2, left: 0 }
+      : { top: 0, right: 0, bottom: 0, left: 0 };
+    map.easeTo({ center, zoom, pitch, bearing, padding, duration: 600 });
+  }, [center, zoom, pitch, bearing, centerOffset]);
 
   // Sync baseline route (faded grey — shown before payment)
   useEffect(() => {
@@ -332,10 +345,11 @@ export function LightMap({
     markersRef.current = newMarkers;
   }, [start, end, parkingPins]);
 
-  // Fit bounds when we have a route (baseline or optimized) + endpoints
+  // Fit bounds when idle (route preview). In navigation mode we leave this
+  // disabled so the driver-locked camera isn't yanked to a fit-all view.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !start || !end) return;
+    if (!map || !fitWhenIdle || !start || !end) return;
     const geom = (route && route.length >= 2) ? route : baselineRoute;
     if (!geom || geom.length < 2) return;
     const bounds = new maplibregl.LngLatBounds(
@@ -345,7 +359,7 @@ export function LightMap({
     geom.forEach(([lat, lng]) => bounds.extend([lng, lat]));
     bounds.extend([end.lng, end.lat]);
     map.fitBounds(bounds, { padding: { top: 140, right: 60, bottom: 360, left: 60 }, duration: 800 });
-  }, [route, baselineRoute, start, end]);
+  }, [route, baselineRoute, start, end, fitWhenIdle]);
 
   return (
     <div

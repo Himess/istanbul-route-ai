@@ -155,23 +155,45 @@ export default function DrivePage() {
     setPhase("initial");
   }, []);
 
-  const mapCenter = useMemo<[number, number]>(() => {
-    if (destination) return [(start.lng + destination.lng) / 2, (start.lat + destination.lat) / 2];
-    return [start.lng, start.lat];
-  }, [destination, start.lat, start.lng]);
-
   const optimizedGeom = (routeResult?.optimizedRoute || []) as [number, number][];
   const baselineGeom = (baseline?.route || []) as [number, number][];
   const agent: AgentDecision | null = routeResult?.agent || null;
+
+  // Navigation-mode camera: bearing follows the first segment of the route,
+  // centered on the driver's start position (not route midpoint).
+  const navBearing = useMemo(() => {
+    if (phase !== "navigating") return 0;
+    const geom = optimizedGeom.length >= 2 ? optimizedGeom : baselineGeom;
+    if (geom.length < 2) return 0;
+    const lookahead = Math.min(4, geom.length - 1);
+    const [lat1, lng1] = geom[0];
+    const [lat2, lng2] = geom[lookahead];
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const lat1r = (lat1 * Math.PI) / 180;
+    const lat2r = (lat2 * Math.PI) / 180;
+    const y = Math.sin(dLng) * Math.cos(lat2r);
+    const x =
+      Math.cos(lat1r) * Math.sin(lat2r) -
+      Math.sin(lat1r) * Math.cos(lat2r) * Math.cos(dLng);
+    return (Math.atan2(y, x) * 180) / Math.PI;
+  }, [phase, optimizedGeom, baselineGeom]);
+
+  const mapCenter = useMemo<[number, number]>(() => {
+    if (phase === "navigating") return [start.lng, start.lat];
+    if (destination) return [(start.lng + destination.lng) / 2, (start.lat + destination.lat) / 2];
+    return [start.lng, start.lat];
+  }, [phase, destination, start.lat, start.lng]);
 
   return (
     <MobileShell>
       <div className="relative w-full h-full overflow-hidden bg-ivory">
         <LightMap
           center={mapCenter}
-          zoom={phase === "navigating" ? 15 : 13}
-          pitch={phase === "navigating" ? 55 : 0}
-          bearing={phase === "navigating" ? 20 : 0}
+          zoom={phase === "navigating" ? 16.2 : 13}
+          pitch={phase === "navigating" ? 60 : 0}
+          bearing={navBearing}
+          centerOffset={phase === "navigating" ? [0, 130] : [0, 0]}
+          fitWhenIdle={phase !== "navigating"}
           route={optimizedGeom}
           baselineRoute={routeResult ? undefined : baselineGeom}
           start={start}
