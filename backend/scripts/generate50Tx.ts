@@ -1,182 +1,146 @@
 /**
- * Generate 50+ on-chain x402 transactions for hackathon submission demo.
- *
- * What it does:
- *   1. Pings the backend (localhost or Railway) with 12 route requests across
- *      different Istanbul origin-destination pairs.
- *   2. Each route triggers 3-5 agent tool calls (each a $0.0001 Arc settlement)
- *      plus the $0.0005 route payment itself.
- *   3. Collects every tx hash, prints a table, and reports the total count.
- *
- * Prerequisite:
- *   - Backend running with AGENT_TX_MODE=onchain
- *   - AGENT_PRIVATE_KEY funded with testnet USDC on Arc
+ * End-to-end proof script: signs real x402 Gateway payments from the agent
+ * wallet and hits the live backend until 50+ on-chain settlements have
+ * occurred on Arc.
  *
  * Usage:
- *   npx tsx scripts/generate50Tx.ts [BACKEND_URL]
- *   BACKEND_URL defaults to http://localhost:3001
+ *   PRIVATE_KEY=0x... npx tsx scripts/generate50Tx.ts
+ *   PRIVATE_KEY=0x... npx tsx scripts/generate50Tx.ts https://istanbul-route-ai-backend.fly.dev
+ *
+ * Prerequisites on the backend:
+ *   - Circle Gateway middleware enabled (no X-DEMO-MODE bypass)
+ *   - AGENT_TX_MODE=onchain
+ *   - The wallet behind PRIVATE_KEY must have USDC deposited in Circle
+ *     Gateway on Arc Testnet (≥ 0.01 USDC recommended for 10 route queries).
  */
 
-const BACKEND = process.argv[2] || "http://localhost:3001";
+import { createWalletClient, createPublicClient, http, defineChain } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { x402Client } from "@x402/core/client";
+import { registerBatchScheme } from "@circle-fin/x402-batching/client";
+import { wrapFetchWithPayment } from "@x402/fetch";
 
-// Twelve real Istanbul OD pairs spanning both sides of the Bosphorus
+const BACKEND = process.argv[2] || process.env.BACKEND_URL || "http://localhost:3001";
+const PK_RAW = process.env.PRIVATE_KEY || process.env.AGENT_PRIVATE_KEY;
+if (!PK_RAW) {
+  console.error("Set PRIVATE_KEY=0x... in env");
+  process.exit(1);
+}
+const PK = (PK_RAW.startsWith("0x") ? PK_RAW : `0x${PK_RAW}`) as `0x${string}`;
+
+const arcTestnet = defineChain({
+  id: 5042002,
+  name: "Arc Testnet",
+  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+  rpcUrls: { default: { http: ["https://rpc.testnet.arc.network"] } },
+  blockExplorers: { default: { name: "ArcScan", url: "https://testnet.arcscan.app" } },
+  testnet: true,
+});
+
 const TRIPS = [
-  { name: "Taksim → Kadıköy", from: { lat: 41.0369, lng: 28.985 }, to: { lat: 40.9903, lng: 29.0276 } },
-  { name: "Bakırköy → Beşiktaş", from: { lat: 40.985, lng: 28.86 }, to: { lat: 41.048, lng: 29.005 } },
-  { name: "Fatih → Üsküdar", from: { lat: 41.012, lng: 28.935 }, to: { lat: 41.026, lng: 29.028 } },
-  { name: "Şişli → Levent", from: { lat: 41.062, lng: 28.988 }, to: { lat: 41.09, lng: 29.004 } },
-  { name: "Eminönü → Kadıköy", from: { lat: 41.015, lng: 28.968 }, to: { lat: 40.99, lng: 29.034 } },
-  { name: "Zeytinburnu → Beyoğlu", from: { lat: 41.0, lng: 28.906 }, to: { lat: 41.035, lng: 28.974 } },
-  { name: "Levent → Kadıköy", from: { lat: 41.09, lng: 29.004 }, to: { lat: 40.99, lng: 29.034 } },
-  { name: "Atatürk Apt → SAW", from: { lat: 40.985, lng: 28.825 }, to: { lat: 40.898, lng: 29.31 } },
-  { name: "Beşiktaş → Şişli", from: { lat: 41.048, lng: 29.005 }, to: { lat: 41.062, lng: 28.988 } },
-  { name: "Üsküdar → Levent", from: { lat: 41.026, lng: 29.028 }, to: { lat: 41.09, lng: 29.004 } },
-  { name: "Fatih → Beşiktaş", from: { lat: 41.012, lng: 28.935 }, to: { lat: 41.048, lng: 29.005 } },
-  { name: "Kadıköy → Taksim", from: { lat: 40.99, lng: 29.034 }, to: { lat: 41.038, lng: 28.99 } },
+  { name: "Taksim → Kadıköy",    from: { lat: 41.0369, lng: 28.985 }, to: { lat: 40.9903, lng: 29.0276 } },
+  { name: "Bakırköy → Beşiktaş", from: { lat: 40.985, lng: 28.86 },   to: { lat: 41.048, lng: 29.005 } },
+  { name: "Fatih → Üsküdar",      from: { lat: 41.012, lng: 28.935 }, to: { lat: 41.026, lng: 29.028 } },
+  { name: "Şişli → Levent",       from: { lat: 41.062, lng: 28.988 }, to: { lat: 41.09, lng: 29.004 } },
+  { name: "Eminönü → Kadıköy",   from: { lat: 41.015, lng: 28.968 }, to: { lat: 40.99, lng: 29.034 } },
+  { name: "Zeytinburnu → Beyoğlu", from: { lat: 41.0, lng: 28.906 },  to: { lat: 41.035, lng: 28.974 } },
+  { name: "Levent → Kadıköy",     from: { lat: 41.09, lng: 29.004 },  to: { lat: 40.99, lng: 29.034 } },
+  { name: "Atatürk → Sabiha",     from: { lat: 40.985, lng: 28.825 }, to: { lat: 40.898, lng: 29.31 } },
+  { name: "Beşiktaş → Şişli",    from: { lat: 41.048, lng: 29.005 }, to: { lat: 41.062, lng: 28.988 } },
+  { name: "Üsküdar → Levent",    from: { lat: 41.026, lng: 29.028 }, to: { lat: 41.09, lng: 29.004 } },
+  { name: "Fatih → Beşiktaş",    from: { lat: 41.012, lng: 28.935 }, to: { lat: 41.048, lng: 29.005 } },
+  { name: "Kadıköy → Taksim",    from: { lat: 40.99, lng: 29.034 },  to: { lat: 41.038, lng: 28.99 } },
 ];
 
-interface RouteCall {
-  trip: string;
-  routeTx: { type: string; amount: string };
-  agent: {
-    model: string;
-    chosen: number;
-    rationale: string;
-    signals: string[];
-    calls: Array<{ name: string; txHash: string | null; txType: string }>;
-  } | null;
-  status: "ok" | "error";
-  errorMsg?: string;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-async function callRoute(trip: typeof TRIPS[0], useDemoMode: boolean): Promise<RouteCall> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (useDemoMode) headers["X-DEMO-MODE"] = "true";
-
-  try {
-    const res = await fetch(`${BACKEND}/api/route`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ from: trip.from, to: trip.to }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      return {
-        trip: trip.name,
-        routeTx: { type: "failed", amount: "0" },
-        agent: null,
-        status: "error",
-        errorMsg: data.error || `HTTP ${res.status}`,
-      };
-    }
-
-    return {
-      trip: trip.name,
-      routeTx: {
-        type: data.payment?.network === "demo" ? "demo" : "onchain",
-        amount: "0.0005",
-      },
-      agent: data.agent
-        ? {
-            model: data.agent.modelId,
-            chosen: data.agent.chosenRouteIndex,
-            rationale: data.agent.rationale,
-            signals: data.agent.signalsUsed || [],
-            calls: (data.agent.toolCalls || []).map((t: any) => ({
-              name: t.name,
-              txHash: t.txHash,
-              txType: t.txType,
-            })),
-          }
-        : null,
-      status: "ok",
-    };
-  } catch (err) {
-    return {
-      trip: trip.name,
-      routeTx: { type: "failed", amount: "0" },
-      agent: null,
-      status: "error",
-      errorMsg: err instanceof Error ? err.message : String(err),
-    };
-  }
-}
-
 async function main() {
-  const useDemo = process.env.DEMO_MODE === "true";
-  console.log(`IstanbulRoute 50+ tx generator`);
-  console.log(`Backend: ${BACKEND}`);
-  console.log(`Demo mode: ${useDemo ? "YES (simulated settlements)" : "NO (expecting real Arc x402 settlements)"}`);
-  console.log(`Trips queued: ${TRIPS.length}\n`);
+  const account = privateKeyToAccount(PK);
+  const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
+  const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() });
 
-  const results: RouteCall[] = [];
-  let totalOnchainTx = 0;
-  let totalSimulatedTx = 0;
+  const signer = {
+    address: account.address,
+    signTypedData: async (params: Parameters<typeof walletClient.signTypedData>[0]) =>
+      walletClient.signTypedData(params),
+  };
+
+  const client = new x402Client();
+  registerBatchScheme(client, { signer: signer as never, networks: ["eip155:5042002"] });
+  const paidFetch = wrapFetchWithPayment(fetch, client);
+
+  console.log(`\nBackend    : ${BACKEND}`);
+  console.log(`Payer addr : ${account.address}`);
+  console.log(`Trips      : ${TRIPS.length}\n`);
+
+  const hashes: { tx: string; kind: string; trip: string }[] = [];
+  let ok = 0, fail = 0;
 
   for (let i = 0; i < TRIPS.length; i++) {
     const trip = TRIPS[i];
-    process.stdout.write(`[${i + 1}/${TRIPS.length}] ${trip.name}  ... `);
-
-    const r = await callRoute(trip, useDemo);
-    results.push(r);
-
-    if (r.status === "error") {
-      console.log(`FAIL (${r.errorMsg})`);
-    } else {
-      const agentCalls = r.agent?.calls.length ?? 0;
-      const onchainCalls = r.agent?.calls.filter((c) => c.txType === "onchain").length ?? 0;
-      const simCalls = r.agent?.calls.filter((c) => c.txType === "simulated").length ?? 0;
-      totalOnchainTx += (r.routeTx.type === "onchain" ? 1 : 0) + onchainCalls;
-      totalSimulatedTx += (r.routeTx.type === "demo" ? 1 : 0) + simCalls;
-      console.log(
-        `chose ${r.agent?.chosen} | ${agentCalls} agent calls (${onchainCalls} onchain, ${simCalls} sim) | "${(r.agent?.rationale || "").slice(0, 60)}…"`,
-      );
+    process.stdout.write(`[${String(i + 1).padStart(2, "0")}/${TRIPS.length}] ${trip.name.padEnd(28)} ... `);
+    try {
+      const res = await paidFetch(`${BACKEND}/api/route`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: trip.from, to: trip.to }),
+      });
+      if (res.status === 402) {
+        console.log("402 (Gateway balance insufficient)");
+        fail++;
+        continue;
+      }
+      const data = await res.json() as {
+        success: boolean;
+        payment?: { transaction?: string };
+        agent?: {
+          totalToolCalls?: number;
+          onchainTxCount?: number;
+          toolCalls?: { name: string; txHash: string | null; txType: string }[];
+        };
+      };
+      if (!data.success) {
+        console.log("failed");
+        fail++;
+        continue;
+      }
+      const routeTx = data.payment?.transaction;
+      if (routeTx) hashes.push({ tx: routeTx, kind: "route", trip: trip.name });
+      const toolTxs = (data.agent?.toolCalls || []).filter((t) => t.txType === "onchain" && t.txHash);
+      for (const t of toolTxs) hashes.push({ tx: t.txHash!, kind: `agent:${t.name}`, trip: trip.name });
+      ok++;
+      console.log(`ok · route=${routeTx ? "✓" : "–"} · agent tools=${toolTxs.length}`);
+    } catch (err) {
+      console.log("err:", err instanceof Error ? err.message.slice(0, 70) : String(err).slice(0, 70));
+      fail++;
     }
-
-    // Gemini free tier: 5 RPM. Inter-request gap to avoid 429.
-    if (i < TRIPS.length - 1) await sleep(14_000);
+    if (i < TRIPS.length - 1) await new Promise((r) => setTimeout(r, 12_000));
   }
 
-  console.log(`\n───────────────────────────────────────────────────`);
-  console.log(`SUMMARY`);
-  console.log(`───────────────────────────────────────────────────`);
-  console.log(`Successful routes : ${results.filter((r) => r.status === "ok").length}/${TRIPS.length}`);
-  console.log(`On-chain x402 tx  : ${totalOnchainTx}`);
-  console.log(`Simulated tx      : ${totalSimulatedTx}`);
-  console.log(`Total tx          : ${totalOnchainTx + totalSimulatedTx}`);
-  console.log(`───────────────────────────────────────────────────\n`);
+  console.log(`\nSummary: ${ok} ok · ${fail} failed`);
+  console.log(`Total on-chain tx collected: ${hashes.length}\n`);
 
-  // Emit tx hashes for ArcScan verification
-  const onchainHashes: string[] = [];
-  for (const r of results) {
-    if (r.status !== "ok" || !r.agent) continue;
-    for (const c of r.agent.calls) {
-      if (c.txType === "onchain" && c.txHash) onchainHashes.push(c.txHash);
-    }
-  }
-
-  if (onchainHashes.length > 0) {
-    console.log(`Arc Testnet tx hashes (first 60 shown):`);
-    onchainHashes.slice(0, 60).forEach((h, i) => {
-      console.log(`  [${String(i + 1).padStart(2, "0")}] https://testnet.arcscan.xyz/tx/${h}`);
+  if (hashes.length > 0) {
+    console.log(`ArcScan verification:`);
+    hashes.forEach((h, i) => {
+      console.log(`  [${String(i + 1).padStart(2, "0")}] ${h.kind.padEnd(28)} ${h.trip.padEnd(24)} https://testnet.arcscan.app/tx/${h.tx}`);
     });
   }
 
-  if (totalOnchainTx + totalSimulatedTx < 50) {
-    console.warn(`\n⚠ Total tx (${totalOnchainTx + totalSimulatedTx}) below hackathon threshold of 50. Increase trips or tool-call density.`);
+  console.log(`\nVerifying inclusion on Arc …`);
+  let mined = 0;
+  const sample = hashes.slice(0, 20);
+  for (const h of sample) {
+    try {
+      const receipt = await publicClient.getTransactionReceipt({ hash: h.tx as `0x${string}` });
+      if (receipt.status === "success") mined++;
+    } catch { /* pending */ }
+  }
+  console.log(`Mined (first ${sample.length} sampled): ${mined}/${sample.length}`);
+
+  if (hashes.length < 50) {
+    console.warn(`\n⚠ Only ${hashes.length} tx — below 50 threshold.`);
     process.exit(1);
   }
-
-  console.log(`\n✓ Hackathon threshold met (${totalOnchainTx + totalSimulatedTx} ≥ 50 tx).`);
+  console.log(`\n✓ Hackathon threshold met: ${hashes.length} ≥ 50 on-chain transactions on Arc.`);
 }
 
-main().catch((err) => {
-  console.error("Fatal:", err);
-  process.exit(1);
-});
+main().catch((err) => { console.error("Fatal:", err); process.exit(1); });
