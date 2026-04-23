@@ -3,6 +3,9 @@ import { VehicleSimulator } from "../simulator/vehicleSimulator.js";
 import { getAllZoneCongestion, getHeatmapData } from "../simulator/trafficEngine.js";
 import { x402Verifier } from "../x402/verifier.js";
 import { eventStream } from "../services/eventStream.js";
+import { getStats24h, getDecisionMix24h, getRevenueSeries7d, recordRevenueDelta } from "../services/agentStats.js";
+import { ibbClient } from "../data/ibbClient.js";
+import { ISTANBUL_DISTRICTS, detectZone } from "../data/istanbulDistricts.js";
 
 interface PaymentRecord {
   id: string;
@@ -20,7 +23,7 @@ let totalQueries = 0;
 let totalRevenue = 0;
 
 /**
- * Record a payment (real or simulated).
+ * Record a payment (real or simulated). Also feeds the 7-day revenue series.
  */
 export function recordPayment(payment: PaymentRecord): void {
   payments.unshift(payment);
@@ -28,7 +31,25 @@ export function recordPayment(payment: PaymentRecord): void {
     payments.length = 200; // Keep last 200
   }
   totalQueries++;
-  totalRevenue += parseFloat(payment.amount);
+  const amt = parseFloat(payment.amount);
+  totalRevenue += amt;
+  if (amt > 0) recordRevenueDelta(amt, payment.timestamp || Date.now());
+}
+
+/**
+ * Seeds totalRevenue + totalQueries from the on-chain event history on
+ * startup. Called once by index.ts after eventStream.loadHistory finishes.
+ */
+export function seedFromEventHistory(): void {
+  const historical = eventStream.getAll();
+  for (const p of historical) {
+    const amt = parseFloat(p.amount);
+    if (!isFinite(amt)) continue;
+    totalQueries++;
+    totalRevenue += amt;
+    recordRevenueDelta(amt, (p.timestamp || Date.now() / 1000) * 1000);
+  }
+  console.log(`[Dashboard] Seeded ${historical.length} historical payments (${totalRevenue.toFixed(6)} USDC total)`);
 }
 
 /**
@@ -72,6 +93,9 @@ export function createDashboardRoutes(simulator: VehicleSimulator): Router {
       ? congestionData.reduce((sum, z) => sum + z.congestion, 0) / congestionData.length
       : 0;
 
+    const agent24h = getStats24h();
+    const revenueSeries = getRevenueSeries7d();
+
     res.json({
       success: true,
       timestamp: Date.now(),
@@ -82,6 +106,7 @@ export function createDashboardRoutes(simulator: VehicleSimulator): Router {
         movingVehicles: movingVehicles.length,
         stoppedVehicles: vehicles.length - movingVehicles.length,
         avgSpeed: Math.round(avgSpeed * 10) / 10,
+        avgCitySpeed: Math.round(avgSpeed * 10) / 10,
         busiestZone,
         busiestZoneVehicles: maxCount,
         avgCongestion: Math.round(avgCongestion * 100) / 100,
@@ -93,8 +118,79 @@ export function createDashboardRoutes(simulator: VehicleSimulator): Router {
           ambulance: vehicles.filter((v) => v.type === "ambulance").length,
           police: vehicles.filter((v) => v.type === "police").length,
         },
+        agent24h,
+        revenueSeries7d: revenueSeries,
       },
     });
+  });
+
+  /**
+   * GET /api/dashboard/agent-mix
+   * Real-signal decision mix the agent produced over the last 24h.
+   */
+  router.get("/agent-mix", (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      timestamp: Date.now(),
+      ...getStats24h(),
+      mix: getDecisionMix24h(),
+    });
+  });
+
+  /**
+   * GET /api/dashboard/zone-heatmap
+   * Real zone congestion: blends IBB traffic index + IETT bus avg speed +
+   * simulator fleet per district. Returns a per-district status usable by
+   * the Municipality dashboard without any synthetic cells.
+   */
+  router.get("/zone-heatmap", async (_req: Request, res: Response) => {
+    try {
+      const trafficHistory = await ibbClient.getTrafficIndex();
+      const latest = trafficHistory[0];
+      const cityIndex = latest?.trafficIndex ?? 0; // 1..99
+
+      const buses = await ibbClient.getBusPositions().catch(() => []);
+      const vehicles = simulator.getVehicles();
+
+      const zones = ISTANBUL_DISTRICTS.map((d) => {
+        const busesHere = buses.filter(
+          (b) => detectZone(b.lat, b.lng) === d.name && b.speed > 0,
+        );
+        const simHere = vehicles.filter((v) => v.zone === d.name && v.speed > 0);
+        const speeds = [
+          ...busesHere.map((b) => b.speed),
+          ...simHere.map((v) => v.speed),
+        ];
+        const avgSpeedHere = speeds.length > 0
+          ? speeds.reduce((s, x) => s + x, 0) / speeds.length
+          : 0;
+        // congestion 0..1 — higher is worse
+        const congestion = avgSpeedHere > 0
+          ? Math.max(0, Math.min(1, 1 - avgSpeedHere / 50))
+          : Math.min(1, cityIndex / 100);
+        let kind: "flowing" | "moderate" | "jam" = "flowing";
+        if (congestion >= 0.65) kind = "jam";
+        else if (congestion >= 0.4) kind = "moderate";
+        return {
+          zone: d.name,
+          center: d.center,
+          congestion: +congestion.toFixed(2),
+          avgSpeed: Math.round(avgSpeedHere * 10) / 10,
+          sampleSize: speeds.length,
+          kind,
+        };
+      });
+
+      res.json({
+        success: true,
+        timestamp: Date.now(),
+        source: "IBB traffic index + IETT speed + simulator",
+        cityWideIndex: cityIndex,
+        zones,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   /**

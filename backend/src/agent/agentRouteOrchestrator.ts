@@ -20,6 +20,7 @@ import { ROUTE_AGENT_TOOLS } from "./toolSchemas.js";
 import { executeTool } from "./tools.js";
 import { settleAgentToolCall } from "./agentSettlement.js";
 import { recordPayment } from "../routes/dashboardRoutes.js";
+import { recordAgentDecision } from "../services/agentStats.js";
 
 const AGENT_ADDRESS_HINT = "0xAgent…";
 
@@ -264,6 +265,15 @@ Decide which route to recommend. Use tools only when they would meaningfully cha
   }
 
   const onchainTxCount = invocations.filter((i) => i.txType === "onchain").length;
+
+  // Feed the Municipality dashboard's 24h rolling stats.
+  recordAgentDecision({
+    timestamp: Date.now(),
+    chosenRouteIndex: decision.chosenRouteIndex,
+    signalsUsed: decision.signalsUsed,
+    toolCalls: invocations.length,
+    modelId: GEMINI_MODEL,
+  });
 
   return {
     ...decision,

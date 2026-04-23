@@ -231,6 +231,13 @@ class ContractEventStream {
   getCount(): number {
     return this.historicalPayments.length;
   }
+
+  /**
+   * Same as getHistorical — returns a copy of every payment seen so far.
+   */
+  getAll(): ContractPayment[] {
+    return [...this.historicalPayments];
+  }
 }
 
 export const eventStream = new ContractEventStream();

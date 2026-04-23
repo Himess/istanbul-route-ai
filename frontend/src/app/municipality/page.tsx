@@ -9,10 +9,46 @@ import { BACKEND_URL, ARCSCAN_URL } from "@/lib/constants";
 
 interface Stats {
   totalQueries?: number;
-  totalRevenue?: string;
+  totalRevenue?: string | number;
   activeVehicles?: number;
   avgCitySpeed?: number;
+  avgSpeed?: number;
+  agent24h?: { totalDecisions: number; rerouteCount: number; avgToolCalls: number };
+  revenueSeries7d?: number[];
 }
+
+interface DecisionMixEntry {
+  signal: string;
+  count: number;
+  pct: number;
+}
+
+interface HeatmapZone {
+  zone: string;
+  center: [number, number];
+  congestion: number;
+  avgSpeed: number;
+  sampleSize: number;
+  kind: "flowing" | "moderate" | "jam";
+}
+
+const SIGNAL_NAMES: Record<string, string> = {
+  iett_density: "IETT density",
+  incidents_on_route: "Incidents",
+  weather: "Weather",
+  parking_near_destination: "ISPARK",
+  time_context: "Time",
+  traffic_snapshot: "IBB Traffic",
+};
+
+const SIGNAL_COLORS = [
+  "var(--teal)",
+  "var(--iris)",
+  "var(--sand)",
+  "oklch(75% 0.06 200)",
+  "oklch(55% 0.06 255)",
+  "oklch(40% 0.09 290)",
+];
 
 interface Payment {
   timestamp: number;
@@ -38,44 +74,56 @@ function Stat({
   );
 }
 
-function ZoneHeatmap() {
-  const cells: { x: number; y: number; color: string }[] = [];
-  const rng = (i: number) => ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1;
-  for (let y = 0; y < 14; y++) for (let x = 0; x < 22; x++) {
-    const inLand = (x + y > 8) && (x - y < 18) && !(x < 4 && y > 9) && !(x > 18 && y < 3);
-    if (!inLand) continue;
-    const r = rng(x * 7 + y * 13);
-    let color = "var(--teal-soft)";
-    if (r < 0.12) color = "var(--iris)";
-    else if (r < 0.25) color = "var(--sand)";
-    else if (r < 0.45) color = "var(--teal)";
-    else if (r < 0.7) color = "var(--teal-soft)";
-    else color = "var(--ivory-2)";
-    cells.push({ x, y, color });
-  }
+function ZoneHeatmap({ zones }: { zones: HeatmapZone[] }) {
+  const bounds = {
+    minLat: 40.95, maxLat: 41.12,
+    minLng: 28.83, maxLng: 29.09,
+  };
+  const w = 440, h = 300;
+  const project = (lat: number, lng: number) => {
+    const x = ((lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * w;
+    const y = (1 - (lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * h;
+    return { x, y };
+  };
+  const colorOf = (z: HeatmapZone) => {
+    if (z.kind === "jam") return "var(--sand)";
+    if (z.kind === "moderate") return "var(--teal)";
+    return "var(--teal-soft)";
+  };
+  const sorted = [...zones].sort((a, b) => b.congestion - a.congestion);
+
   return (
     <div className="relative h-[300px] rounded-2xl overflow-hidden border border-line" style={{ background: "var(--ivory-2)" }}>
-      <svg viewBox="0 0 440 300" className="absolute inset-0 w-full h-full">
-        <rect width="440" height="300" fill="oklch(96% 0.018 200)" />
+      <svg viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 w-full h-full">
+        <rect width={w} height={h} fill="oklch(96% 0.018 200)" />
         <path d="M 280 0 L 340 0 L 200 300 L 140 300 Z" fill="oklch(92% 0.03 200)" opacity="0.7" />
-        {cells.map((c, i) => (
-          <rect
-            key={i}
-            x={c.x * 20}
-            y={c.y * 21.5}
-            width={18}
-            height={19.5}
-            fill={c.color}
-            opacity="0.92"
-            rx={3}
-          />
-        ))}
+        {zones.map((z) => {
+          const { x, y } = project(z.center[0], z.center[1]);
+          const radius = 22 + z.congestion * 22;
+          return (
+            <g key={z.zone}>
+              <circle cx={x} cy={y} r={radius} fill={colorOf(z)} opacity="0.38" />
+              <circle cx={x} cy={y} r={radius * 0.55} fill={colorOf(z)} opacity="0.85" />
+              <text
+                x={x}
+                y={y + 4}
+                textAnchor="middle"
+                fontFamily="Inter, sans-serif"
+                fontSize="10"
+                fontWeight="600"
+                fill="var(--ink)"
+              >
+                {z.zone}
+              </text>
+            </g>
+          );
+        })}
       </svg>
-      <div className="absolute top-3 left-3 flex items-center gap-3">
+      <div className="absolute top-3 left-3 flex items-center gap-2">
         {[
-          { c: "var(--teal)", l: "Flowing" },
+          { c: "var(--teal-soft)", l: "Flowing" },
+          { c: "var(--teal)", l: "Moderate" },
           { c: "var(--sand)", l: "Jam" },
-          { c: "var(--iris)", l: "Agent-rerouted" },
         ].map((k) => (
           <div key={k.l} className="flex items-center gap-1.5 bg-paper/90 backdrop-blur border border-line rounded-full pl-1.5 pr-2.5 h-6">
             <div className="w-2.5 h-2.5 rounded-sm" style={{ background: k.c }} />
@@ -83,20 +131,28 @@ function ZoneHeatmap() {
           </div>
         ))}
       </div>
+      {sorted[0] && (
+        <div className="absolute bottom-3 right-3 bg-paper/90 backdrop-blur border border-line rounded-xl px-3 py-2 text-[10px] font-mono">
+          <span className="ink-3">Worst: </span>
+          <span className="ink">{sorted[0].zone}</span>
+          <span className="ink-3"> · {Math.round(sorted[0].congestion * 100)}%</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function DecisionMix() {
-  const mix = [
-    { name: "IETT density", pct: 34, color: "var(--teal)" },
-    { name: "Incidents", pct: 22, color: "var(--iris)" },
-    { name: "Weather", pct: 18, color: "var(--sand)" },
-    { name: "ISPARK", pct: 14, color: "oklch(75% 0.06 200)" },
-    { name: "Time", pct: 8, color: "oklch(55% 0.06 255)" },
-    { name: "IBB traffic", pct: 4, color: "oklch(40% 0.09 290)" },
-  ];
-  const total = mix.reduce((s, m) => s + m.pct, 0);
+function DecisionMix({
+  entries, totalDecisions,
+}: { entries: DecisionMixEntry[]; totalDecisions: number }) {
+  const mix = entries.length > 0
+    ? entries.map((e, i) => ({
+        name: SIGNAL_NAMES[e.signal] || e.signal,
+        pct: e.pct,
+        color: SIGNAL_COLORS[i % SIGNAL_COLORS.length],
+      }))
+    : [{ name: "Awaiting agent runs…", pct: 100, color: "var(--ink-4)" }];
+  const total = mix.reduce((s, m) => s + m.pct, 0) || 1;
   let offset = 0;
   return (
     <div className="bg-paper border border-line rounded-2xl p-5 shadow-1 flex gap-6">
@@ -123,7 +179,9 @@ function DecisionMix() {
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-mono text-[24px] ink tabular-nums leading-none">1,247</span>
+          <span className="font-mono text-[24px] ink tabular-nums leading-none">
+            {totalDecisions.toLocaleString()}
+          </span>
           <span className="text-[10px] font-mono ink-3 mt-1">decisions · 24h</span>
         </div>
       </div>
@@ -150,32 +208,50 @@ function fmtAmount(a?: string) {
 export default function MunicipalityPage() {
   const [stats, setStats] = useState<Stats>({});
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [heatmap, setHeatmap] = useState<HeatmapZone[]>([]);
+  const [decisionMix, setDecisionMix] = useState<DecisionMixEntry[]>([]);
 
   useEffect(() => {
     const loadStats = () =>
       fetch(`${BACKEND_URL}/api/dashboard/stats`)
         .then((r) => r.json())
-        .then((d) => setStats(d))
+        .then((d) => setStats(d?.stats || d || {}))
         .catch(() => {});
     const loadPay = () =>
       fetch(`${BACKEND_URL}/api/dashboard/payments`)
         .then((r) => r.json())
         .then((d) => setPayments(d?.payments || []))
         .catch(() => {});
+    const loadHeatmap = () =>
+      fetch(`${BACKEND_URL}/api/dashboard/zone-heatmap`)
+        .then((r) => r.json())
+        .then((d) => setHeatmap(d?.zones || []))
+        .catch(() => {});
+    const loadMix = () =>
+      fetch(`${BACKEND_URL}/api/dashboard/agent-mix`)
+        .then((r) => r.json())
+        .then((d) => setDecisionMix(d?.mix || []))
+        .catch(() => {});
     loadStats();
     loadPay();
-    const s = setInterval(loadStats, 15000);
-    const p = setInterval(loadPay, 10000);
-    return () => {
-      clearInterval(s);
-      clearInterval(p);
-    };
+    loadHeatmap();
+    loadMix();
+    const s = setInterval(loadStats, 15_000);
+    const p = setInterval(loadPay, 10_000);
+    const h = setInterval(loadHeatmap, 20_000);
+    const m = setInterval(loadMix, 20_000);
+    return () => { clearInterval(s); clearInterval(p); clearInterval(h); clearInterval(m); };
   }, []);
 
   const revenueUSDC = Number(stats.totalRevenue || 0);
   const queries = Number(stats.totalQueries || 0);
-  const activeVeh = Number(stats.activeVehicles || 80);
-  const avgSpd = Number(stats.avgCitySpeed || 28);
+  const activeVeh = Number(stats.activeVehicles || 0);
+  const avgSpd = Number(stats.avgCitySpeed ?? stats.avgSpeed ?? 0);
+  const agentRuns = stats.agent24h?.totalDecisions || 0;
+  const rerouteCount = stats.agent24h?.rerouteCount || 0;
+  const revenueSpark = (stats.revenueSeries7d && stats.revenueSeries7d.length > 0)
+    ? stats.revenueSeries7d.map((v) => Math.max(v, 0))
+    : [0, 0, 0, 0, 0, 0, 0];
 
   return (
     <div className="min-h-screen bg-ivory pb-12">
@@ -201,10 +277,30 @@ export default function MunicipalityPage() {
         </div>
 
         <div className="grid grid-cols-4 gap-6">
-          <Stat label="Revenue · all time" value={revenueUSDC.toFixed(4)} unit="USDC" sub={`${queries.toLocaleString()} route queries`} spark={[3, 5, 4, 6, 8, 7, 9, 11]} />
-          <Stat label="Active vehicles" value={String(activeVeh)} unit="units" sub="Municipal fleet on the road" spark={[5, 6, 6, 7, 7, 8, 8, 9]} />
-          <Stat label="City-wide avg speed" value={String(avgSpd)} unit="km/h" sub="Blended from real IETT buses" spark={[6, 5, 5, 7, 6, 8, 9, 9]} />
-          <Stat label="Agent reroutes · 24h" value="312" sub="Gemini-selected alternatives" spark={[2, 3, 4, 6, 5, 7, 8, 10]} />
+          <Stat
+            label="Revenue · all time"
+            value={revenueUSDC.toFixed(4)}
+            unit="USDC"
+            sub={`${queries.toLocaleString()} paid queries`}
+            spark={revenueSpark}
+          />
+          <Stat
+            label="Active vehicles"
+            value={String(activeVeh)}
+            unit="units"
+            sub="Municipal fleet + live IETT"
+          />
+          <Stat
+            label="City-wide avg speed"
+            value={avgSpd > 0 ? String(avgSpd) : "—"}
+            unit="km/h"
+            sub="Blended from real fleet signals"
+          />
+          <Stat
+            label="Agent reroutes · 24h"
+            value={String(rerouteCount)}
+            sub={`${agentRuns} agent decisions logged`}
+          />
         </div>
 
         <div className="grid grid-cols-12 gap-6">
@@ -266,8 +362,10 @@ export default function MunicipalityPage() {
 
           <div className="col-span-4 space-y-6">
             <div className="bg-paper border border-line rounded-2xl p-5 shadow-1">
-              <div className="text-[11px] font-mono ink-3 tracking-[.12em] uppercase mb-3">Zone heatmap</div>
-              <ZoneHeatmap />
+              <div className="text-[11px] font-mono ink-3 tracking-[.12em] uppercase mb-3">
+                Zone heatmap · live IBB + IETT
+              </div>
+              <ZoneHeatmap zones={heatmap} />
             </div>
           </div>
         </div>
@@ -275,7 +373,7 @@ export default function MunicipalityPage() {
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-7">
             <div className="text-[11px] font-mono ink-3 tracking-[.12em] uppercase mb-3">Agent decision mix · last 24h</div>
-            <DecisionMix />
+            <DecisionMix entries={decisionMix} totalDecisions={agentRuns} />
           </div>
 
           <div className="col-span-5 bg-paper border border-line rounded-2xl p-5 shadow-1">

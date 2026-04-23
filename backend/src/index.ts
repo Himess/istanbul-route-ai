@@ -6,7 +6,7 @@ import { VehicleSimulator } from "./simulator/vehicleSimulator.js";
 import { getCongestion } from "./simulator/trafficEngine.js";
 import { createTrafficRoutes } from "./routes/trafficRoutes.js";
 import { createRouteOptimizerRoutes } from "./routes/routeOptimizer.js";
-import { createDashboardRoutes } from "./routes/dashboardRoutes.js";
+import { createDashboardRoutes, seedFromEventHistory } from "./routes/dashboardRoutes.js";
 import { demoRoutes } from "./routes/demoRoutes.js";
 import { setupWebSocket } from "./websocket/vehicleStream.js";
 import { eventStream } from "./services/eventStream.js";
@@ -142,10 +142,11 @@ httpServer.listen(config.port, async () => {
   ╚═══════════════════════════════════════════════════╝
   `);
 
-  // Load historical on-chain payments
+  // Load historical on-chain payments + seed dashboard counters from them
   try {
     const payments = await eventStream.loadHistory(50000);
     console.log(`  [EventStream] ${payments.length} historical payments loaded`);
+    seedFromEventHistory();
   } catch (err) {
     console.error("  [EventStream] Failed to load history:", err instanceof Error ? err.message : err);
   }
