@@ -7,16 +7,32 @@ import { demoSimulator } from "../services/demoSimulator.js";
 import { ibbClient } from "../data/ibbClient.js";
 import { detectZone } from "../data/istanbulDistricts.js";
 
+interface FleetMarker {
+  id: string;
+  type: "bus" | "garbage_truck" | "ambulance" | "police" | "service";
+  lat: number;
+  lng: number;
+  speed: number;
+  heading: number;
+  zone: string;
+  status: "moving" | "stopped" | "idle";
+  source: "ibb" | "simulator";
+  plate?: string;
+  operator?: string;
+  garage?: string;
+}
+
 /**
- * Real live IETT bus feed pulled from the IBB SOAP API. Only these buses
- * appear on the user-facing Drive map — positions stay stable between
- * IBB's ~2 minute refresh windows, no synthetic jitter from the simulator.
+ * Blends the municipal operations fleet (simulator — garbage trucks, police,
+ * ambulances, service vehicles) with the IETT live bus feed when the IBB
+ * SOAP endpoint is reachable. Each marker carries an explicit `source`
+ * field so the UI can label it honestly in tooltips.
  */
-async function collectLiveVehicles(_simulator: VehicleSimulator) {
+async function collectLiveVehicles(simulator: VehicleSimulator): Promise<FleetMarker[]> {
   const realBuses = await ibbClient.getBusPositions().catch(() => []);
-  return realBuses.slice(0, 150).map((b) => ({
+  const liveMapped: FleetMarker[] = realBuses.slice(0, 120).map((b) => ({
     id: `iett-${b.id}`,
-    type: "bus" as const,
+    type: "bus",
     plate: b.plate,
     operator: b.operator,
     garage: b.garage,
@@ -25,9 +41,26 @@ async function collectLiveVehicles(_simulator: VehicleSimulator) {
     speed: b.speed,
     heading: 0,
     zone: detectZone(b.lat, b.lng),
-    status: (b.speed > 2 ? "moving" : "stopped") as "moving" | "stopped",
-    source: "ibb" as const,
+    status: b.speed > 2 ? "moving" : "stopped",
+    source: "ibb",
   }));
+  // Operations fleet (simulator) — garbage trucks, police, ambulances, service.
+  // Exclude "bus" type because we rely on the real IETT feed for those.
+  const simFleet: FleetMarker[] = simulator
+    .getPublicData()
+    .filter((v) => v.type !== "bus")
+    .map((v) => ({
+      id: v.id,
+      type: v.type as FleetMarker["type"],
+      lat: v.lat,
+      lng: v.lng,
+      speed: v.speed,
+      heading: v.heading,
+      zone: v.zone,
+      status: v.status as FleetMarker["status"],
+      source: "simulator",
+    }));
+  return [...liveMapped, ...simFleet];
 }
 
 const ZONES = [
@@ -82,35 +115,54 @@ export function setupWebSocket(
     },
   });
 
-  // Cache the live IETT bus feed; refreshed every 30s from the IBB API.
-  let cachedVehicles: Awaited<ReturnType<typeof collectLiveVehicles>> = [];
-  async function refreshVehicleCache() {
+  // Live IETT positions refreshed every 30s (IBB cache TTL); simulator fleet
+  // is read fresh on every emit tick so operations vehicles move smoothly.
+  let ibbCache: FleetMarker[] = [];
+  async function refreshIbbCache() {
     try {
-      cachedVehicles = await collectLiveVehicles(simulator);
+      const all = await collectLiveVehicles(simulator);
+      ibbCache = all.filter((v) => v.source === "ibb");
     } catch {
-      cachedVehicles = [];
+      ibbCache = [];
     }
   }
-  refreshVehicleCache();
-  setInterval(refreshVehicleCache, 30_000);
+  refreshIbbCache();
+  setInterval(refreshIbbCache, 30_000);
+
+  function buildSnapshot(): FleetMarker[] {
+    const simFleet: FleetMarker[] = simulator
+      .getPublicData()
+      .filter((v) => v.type !== "bus")
+      .map((v) => ({
+        id: v.id,
+        type: v.type as FleetMarker["type"],
+        lat: v.lat,
+        lng: v.lng,
+        speed: v.speed,
+        heading: v.heading,
+        zone: v.zone,
+        status: v.status as FleetMarker["status"],
+        source: "simulator",
+      }));
+    return [...ibbCache, ...simFleet];
+  }
 
   io.on("connection", (socket) => {
     console.log(`[WS] Client connected: ${socket.id}`);
     socket.emit("vehicle_update", {
       timestamp: Date.now(),
-      vehicles: cachedVehicles,
+      vehicles: buildSnapshot(),
     });
     socket.on("disconnect", () => {
       console.log(`[WS] Client disconnected: ${socket.id}`);
     });
   });
 
-  // Broadcast updates every 2s. Municipal non-transit fleet moves constantly;
-  // IETT bus coords refresh from the IBB cache every 30s.
+  // Emit every 2s with a fresh snapshot — simulator fleet animates smoothly.
   setInterval(() => {
     io.emit("vehicle_update", {
       timestamp: Date.now(),
-      vehicles: cachedVehicles,
+      vehicles: buildSnapshot(),
     });
   }, 2_000);
 
