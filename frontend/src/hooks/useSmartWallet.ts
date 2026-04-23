@@ -109,7 +109,12 @@ export function useSmartWallet() {
         walletClient.signTypedData(params),
     };
     const client = new x402Core.x402Client();
-    x402Batch.registerBatchScheme(client, { signer: signer as never });
+    // Restrict x402 to Arc Testnet only — avoids the signer picking a chain
+    // MetaMask isn't currently on.
+    x402Batch.registerBatchScheme(client, {
+      signer: signer as never,
+      networks: ["eip155:5042002"],
+    });
     paidFetchRef.current = x402Fetch.wrapFetchWithPayment(fetch, client);
   }
 
