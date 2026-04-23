@@ -4,11 +4,16 @@
 
 ## Live Demo
 
-- **Dashboard**: [istanbul-route-ai.vercel.app](https://istanbul-route-ai.vercel.app)
+- **Home**: [istanbul-route-ai.vercel.app](https://istanbul-route-ai.vercel.app)
 - **Drive (3D Navigation)**: [istanbul-route-ai.vercel.app/drive](https://istanbul-route-ai.vercel.app/drive)
 - **Park (Parking Finder)**: [istanbul-route-ai.vercel.app/park](https://istanbul-route-ai.vercel.app/park)
-- **Istanbul Card (Wallet)**: [istanbul-route-ai.vercel.app/card](https://istanbul-route-ai.vercel.app/card)
+- **Card (Gateway Wallet)**: [istanbul-route-ai.vercel.app/card](https://istanbul-route-ai.vercel.app/card)
+- **Municipality Console**: [istanbul-route-ai.vercel.app/municipality](https://istanbul-route-ai.vercel.app/municipality)
+- **Pitch Deck (live slides)**: [istanbul-route-ai.vercel.app/pitch](https://istanbul-route-ai.vercel.app/pitch)
 - **Backend API**: [istanbul-route-ai-backend.fly.dev](https://istanbul-route-ai-backend.fly.dev)
+- **Tx Proof (126 real tx)**: [TX_PROOF.md](./TX_PROOF.md)
+- **Pitch Script**: [PITCH_SCRIPT.md](./PITCH_SCRIPT.md)
+- **Circle Product Feedback**: [CIRCLE_PRODUCT_FEEDBACK.md](./CIRCLE_PRODUCT_FEEDBACK.md)
 
 ## Hackathon Tracks
 
@@ -30,8 +35,9 @@ Istanbul has 262+ ISPARK parking lots and thousands of municipal vehicles on the
 |--------|----------|-------------------|
 | Gas cost per tx | ~$0.50 | ~$0.000001 |
 | Our avg payment | $0.0004 | $0.0004 |
-| 36,000 tx gas cost | **$18,000** | **$0.04** |
-| Model viable? | **No** (gas > payment) | **Yes** (1,250x cheaper) |
+| 126 tx gas cost (this submission) | **~$63** | **~$0.0001** |
+| At production scale (1M queries/day) | **$500k / day** | **$1 / day** |
+| Model viable? | **No** (gas > payment) | **Yes** (500,000× cheaper) |
 
 This model is **impossible** on Ethereum. Circle Nanopayments + Arc make it viable.
 
@@ -42,10 +48,10 @@ This model is **impossible** on Ethereum. Circle Nanopayments + Arc make it viab
 │   Next.js 16    │────▶│   Express API    │────▶│   Arc Testnet   │
 │   React 19      │ WS  │   Socket.IO      │     │   USDC Native   │
 │   MapLibre 3D   │◀────│   x402 Gateway   │     │   Smart Contracts│
-│   Tailwind 4    │     │   Circle SDKs    │     │   36,000+ TX    │
+│   Tailwind 4    │     │   Circle SDKs    │     │   126 real tx   │
 │                 │     │   Gemini Agent   │     │                 │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
-     Vercel                  Railway               Chain 5042002
+     Vercel                  Fly.io (FRA)          Chain 5042002
 ```
 
 ## Silent Agent — Gemini Function Calling
@@ -90,16 +96,33 @@ agent: {
 }
 ```
 
-### 50+ On-chain Transaction Proof
+### 50+ On-chain Transaction Proof — 126 real tx on Arc Testnet
 
-Each `/api/route` call produces **1 route payment + 3-5 agent tool payments**.
-Run `scripts/generate50Tx.ts` (12 trips across both sides of the Bosphorus) to
-generate ~60 Arc settlements and emit ArcScan verification URLs:
+This submission produces **126 verifiable on-chain transactions** on Arc Testnet, split into two reproducible sets:
+
+**Section A — 55 tx via Circle Programmable Wallet SDK** (visible in Circle Developer Console, satisfies the "executed via the Circle Developer Console" rule):
 
 ```bash
-# In AGENT_TX_MODE=onchain (needs funded AGENT_PRIVATE_KEY)
-npx tsx scripts/generate50Tx.ts https://istanbul-route-ai-backend.fly.dev
+# From an ARC-TESTNET Dev-Controlled Wallet with ≥ 0.0055 USDC
+CIRCLE_WALLET_ID=<arc-wallet-uuid> \
+  SELLER=0xF505e2E71df58D7244189072008f25f6b6aaE5ae \
+  COUNT=55 \
+  npx tsx scripts/circleSdkSettlements.ts
 ```
+
+Each tx is signed by Circle's MPC infrastructure via `client.createTransaction(...)`, then appears in **Circle Console → Transactions** AND on ArcScan. Output is saved incrementally to `backend/scripts/circle-sdk-tx.json` so runs are resumable.
+
+**Section B — 71 tx via the agent's live settlement path** (mirrors what `settleAgentToolCall` does in production, no Gemini quota dependency):
+
+```bash
+PRIVATE_KEY=0x<payer> \
+  SELLER=0xF505e2E71df58D7244189072008f25f6b6aaE5ae \
+  COUNT=66 \
+  npx tsx scripts/replayAgentSettlements.ts
+```
+
+Full clickable ArcScan list for both sections: [`TX_PROOF.md`](./TX_PROOF.md).
+Circle Console verification: [console.circle.com/wallets/dev/transactions](https://console.circle.com/wallets/dev/transactions) filtered by wallet `0x4cc48ea31173c5f14999222962a900ae2e945a1a`.
 
 ## Circle Infrastructure Used
 
@@ -119,7 +142,7 @@ npx tsx scripts/generate50Tx.ts https://istanbul-route-ai-backend.fly.dev
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| IstanbulRouteX402 | `0xD117bDB3d1463a1B47561eb74BEa88ebE93B81CF` | Route payments (36,000+ tx) |
+| IstanbulRouteX402 | `0xD117bDB3d1463a1B47561eb74BEa88ebE93B81CF` | Route payments |
 | IstanbulRouteParking | `0x198be13482770fa01e36ae199f8e6873ad2f7b91` | Parking payments |
 
 - Solidity 0.8.24 + Foundry
@@ -151,12 +174,19 @@ npx tsx scripts/generate50Tx.ts https://istanbul-route-ai-backend.fly.dev
 - Multi-chain balance display (Arc, Base Sepolia, Ethereum Sepolia)
 - Top Up / Withdraw functionality
 
-### Dashboard — Municipality Panel
-- Real-time stats: revenue, queries, avg speed, active vehicles
-- Payment feed with on-chain verification (ArcScan links)
-- Zone congestion ranking
-- Nanopayment economics comparison (Ethereum vs Arc)
-- WebSocket live updates (500ms vehicle positions)
+### Municipality — Operator Console
+- Four live KPI tiles: revenue, active vehicles, city-wide avg speed, agent reroutes · 24h
+- Streaming on-chain payment feed — every row links to ArcScan
+- Zone heatmap blended from live İBB traffic + IETT bus speeds
+- Agent decision-mix ring: which signals Gemini cited most in the last 24h
+- Margin proof card: today's tx volume on Ethereum vs Arc
+- All values pulled from real endpoints (`/api/dashboard/stats`, `/api/dashboard/payments`, `/api/dashboard/zone-heatmap`, `/api/dashboard/agent-mix`)
+
+### Pitch — 16-Slide Live Deck
+- `/pitch` renders a 16-slide presentation as a React app with Framer Motion transitions
+- Keyboard navigation: ←/→ to move, `F` for fullscreen, `Home`/`End`, URL hash sync (`#3`)
+- Real QR code on the "Try it now" slide
+- Matching narration + demo script in [`PITCH_SCRIPT.md`](./PITCH_SCRIPT.md) (~10:40 target video)
 
 ## Data Sources
 
@@ -202,7 +232,7 @@ npx tsx scripts/generate50Tx.ts https://istanbul-route-ai-backend.fly.dev
 
 **Contracts**: Solidity 0.8.24, Foundry (forge), 30 tests
 
-**Deploy**: Vercel (frontend), Railway (backend), Arc Testnet (contracts)
+**Deploy**: Vercel (frontend), Fly.io Frankfurt (backend), Arc Testnet (contracts)
 
 ## Local Development
 
