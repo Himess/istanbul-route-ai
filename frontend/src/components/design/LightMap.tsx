@@ -206,6 +206,16 @@ export function LightMap({
       const seen = new Set<string>();
       for (const v of live) {
         seen.add(v.id);
+        const extras = v as unknown as { plate?: string; operator?: string; garage?: string };
+        const titleLines = [
+          `${v.type.toUpperCase()} · ${v.zone}`,
+          `Speed: ${Math.round(v.speed)} km/h · ${v.status}`,
+          extras.plate ? `Plate: ${extras.plate}` : "",
+          extras.operator ? `Operator: ${extras.operator}` : "",
+          extras.garage ? `Garage: ${extras.garage}` : "",
+          v.source === "ibb" ? "Live · İBB/İETT feed" : "Municipal fleet",
+        ].filter(Boolean).join("\n");
+
         let marker = vehicleMarkersRef.current.get(v.id);
         if (!marker) {
           const el = document.createElement("div");
@@ -215,16 +225,18 @@ export function LightMap({
             "border:2px solid rgba(255,255,255,0.95)",
             `background:${color}`,
             "box-shadow:0 2px 6px rgba(20,30,50,.18)",
-            "transition:transform 250ms ease-out",
+            "cursor:help",
           ].join(";");
           el.className = "irai-vehicle";
-          el.title = `${v.type} · ${Math.round(v.speed)} km/h`;
+          el.title = titleLines;
           marker = new maplibregl.Marker({ element: el, anchor: "center" })
             .setLngLat([v.lng, v.lat])
             .addTo(map);
           vehicleMarkersRef.current.set(v.id, marker);
         } else {
           marker.setLngLat([v.lng, v.lat]);
+          const el = marker.getElement();
+          if (el && el.title !== titleLines) el.title = titleLines;
         }
       }
       // remove markers no longer in stream

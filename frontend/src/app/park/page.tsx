@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { TopBar } from "@/components/design/TopBar";
 import { BottomNav } from "@/components/design/BottomNav";
 import { LightMap } from "@/components/design/LightMap";
@@ -32,9 +32,17 @@ export default function ParkPage() {
   const [loading, setLoading] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const attemptedRef = useRef(false);
+
+  // Pull latest payFetch via ref so the fetcher identity stays stable across
+  // re-renders — otherwise the wallet object changes each render and would
+  // re-trigger the auto-fetch in an infinite loop.
+  const payFetchRef = useRef(wallet.payFetch);
+  payFetchRef.current = wallet.payFetch;
 
   const fetchAvailability = useCallback(async () => {
-    if (!wallet.mode) return;
+    if (attemptedRef.current) return;
+    attemptedRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -42,7 +50,10 @@ export default function ParkPage() {
       url.searchParams.set("lat", String(CENTER.lat));
       url.searchParams.set("lng", String(CENTER.lng));
       url.searchParams.set("radius", "1500");
-      const res = await wallet.payFetch(url.toString(), { method: "GET" }, 0.0001);
+      const res = await payFetchRef.current(url.toString(), { method: "GET" }, 0.0001);
+      if (res.status === 402) {
+        throw new Error("Deposit USDC in the Card tab to unlock parking.");
+      }
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Parking failed");
       const ranked = (data.parkingLots || []).slice(0, 3) as Lot[];
@@ -53,13 +64,20 @@ export default function ParkPage() {
     } finally {
       setLoading(false);
     }
-  }, [wallet]);
+  }, []);
 
+  // Auto-fetch once when the wallet becomes ready. The `attemptedRef` guard
+  // prevents a render loop: further attempts require user tapping "Retry".
   useEffect(() => {
-    if (wallet.mode && !unlocked && lots.length === 0) {
+    if (wallet.mode && !attemptedRef.current) {
       fetchAvailability();
     }
-  }, [wallet.mode, unlocked, lots.length, fetchAvailability]);
+  }, [wallet.mode, fetchAvailability]);
+
+  const retry = useCallback(() => {
+    attemptedRef.current = false;
+    fetchAvailability();
+  }, [fetchAvailability]);
 
   if (!wallet.mode) {
     return (
@@ -146,8 +164,14 @@ export default function ParkPage() {
               <div className="py-8 text-center text-[12px] ink-3">Querying ISPARK…</div>
             )}
             {error && (
-              <div className="py-3 px-3 text-[12px]" style={{ color: "var(--danger)" }}>
-                {error}
+              <div className="py-3 px-3 space-y-2">
+                <div className="text-[12px]" style={{ color: "var(--danger)" }}>{error}</div>
+                <button
+                  onClick={retry}
+                  className="text-[11px] font-mono ink-3 border border-line rounded-full px-3 py-1.5 hover:bg-ivory-2 transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             )}
             {lots.map((lot, i) => {

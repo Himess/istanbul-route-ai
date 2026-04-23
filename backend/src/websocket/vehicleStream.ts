@@ -8,17 +8,18 @@ import { ibbClient } from "../data/ibbClient.js";
 import { detectZone } from "../data/istanbulDistricts.js";
 
 /**
- * Combines the municipal simulator fleet (ambulances, police, sanitation,
- * service) with the real IETT bus feed pulled from the IBB SOAP API.
- * The simulator is kept ONLY for the non-transit vehicle types; all buses
- * shown on the map are real live IETT vehicles.
+ * Real live IETT bus feed pulled from the IBB SOAP API. Only these buses
+ * appear on the user-facing Drive map — positions stay stable between
+ * IBB's ~2 minute refresh windows, no synthetic jitter from the simulator.
  */
-async function collectLiveVehicles(simulator: VehicleSimulator) {
-  const sim = simulator.getPublicData().filter((v) => v.type !== "bus");
+async function collectLiveVehicles(_simulator: VehicleSimulator) {
   const realBuses = await ibbClient.getBusPositions().catch(() => []);
-  const busesMapped = realBuses.slice(0, 120).map((b) => ({
+  return realBuses.slice(0, 150).map((b) => ({
     id: `iett-${b.id}`,
     type: "bus" as const,
+    plate: b.plate,
+    operator: b.operator,
+    garage: b.garage,
     lat: b.lat,
     lng: b.lng,
     speed: b.speed,
@@ -27,7 +28,6 @@ async function collectLiveVehicles(simulator: VehicleSimulator) {
     status: (b.speed > 2 ? "moving" : "stopped") as "moving" | "stopped",
     source: "ibb" as const,
   }));
-  return [...busesMapped, ...sim];
 }
 
 const ZONES = [
@@ -82,13 +82,13 @@ export function setupWebSocket(
     },
   });
 
-  // Cache the blended vehicle list; refreshed every 30s from the IBB API.
+  // Cache the live IETT bus feed; refreshed every 30s from the IBB API.
   let cachedVehicles: Awaited<ReturnType<typeof collectLiveVehicles>> = [];
   async function refreshVehicleCache() {
     try {
       cachedVehicles = await collectLiveVehicles(simulator);
     } catch {
-      cachedVehicles = simulator.getPublicData();
+      cachedVehicles = [];
     }
   }
   refreshVehicleCache();
