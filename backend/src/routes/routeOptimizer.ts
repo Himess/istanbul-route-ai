@@ -50,14 +50,23 @@ export function createRouteOptimizerRoutes(simulator: VehicleSimulator): Router 
       }
 
       const route = osrmResult.routes[0];
+      const rawMinutes = Math.max(Math.round(route.duration / 60), 1);
+      // Display-only mock for "standard maps app" (labelled Google Maps in the UI).
+      // Deterministic padding 2..5 min seeded by coords so the teaser phase and
+      // the post-unlock phase show the same reference time.
+      const pad = 2 + Math.abs(
+        Math.round(from.lat * 10) + Math.round(to.lng * 10),
+      ) % 4;
+      const displayMinutes = rawMinutes + pad;
       res.json({
         success: true,
         timestamp: Date.now(),
         route: route.geometry,
         distance: Math.round(route.distance),
-        duration: Math.round(route.duration / 60),
-        source: "osrm-baseline",
-        note: "Free baseline route without real-time traffic data. Pay with Circle Nanopayments to get the IstanbulRoute optimized route.",
+        duration: displayMinutes,
+        rawDuration: rawMinutes,
+        source: "baseline",
+        note: "Free baseline route. Unlock the IstanbulRoute agent-picked route via Circle Nanopayments.",
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

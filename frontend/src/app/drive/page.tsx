@@ -340,8 +340,8 @@ export default function DrivePage() {
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ background: "var(--ink-4)" }} />
                       <div className="truncate">
-                        <div className="text-[13px] ink-2">Standard route</div>
-                        <div className="text-[10px] font-mono ink-3">OSRM · free</div>
+                        <div className="text-[13px] ink-2">Google Maps</div>
+                        <div className="text-[10px] font-mono ink-3">illustrative · free</div>
                       </div>
                     </div>
                     <div className="font-mono text-[18px] ink tabular-nums">
@@ -358,7 +358,7 @@ export default function DrivePage() {
                       <HaloDot />
                       <div className="truncate">
                         <div className="text-[13px] font-medium" style={{ color: "var(--iris-ink)" }}>
-                          CityPulse route
+                          IstanbulRoute AI
                         </div>
                         <div className="text-[10px] font-mono ink-3">Gemini + live municipal data</div>
                       </div>
@@ -440,14 +440,14 @@ export default function DrivePage() {
                         {routeResult.optimizedTime}
                         <span className="text-teal-ink"> min</span>
                       </div>
-                      <div className="text-[11px] font-mono ink-3 mt-1">CITYPULSE</div>
+                      <div className="text-[11px] font-mono ink-3 mt-1">ISTANBUL ROUTE</div>
                     </div>
                     <div className="flex-1 h-px bg-line self-end mb-3" />
                     <div className="text-right">
                       <div className="font-mono text-[18px] ink-3 tabular-nums line-through decoration-[var(--ink-4)]">
-                        {baseline.durationMin} min
+                        {routeResult.normalTime} min
                       </div>
-                      <div className="text-[11px] font-mono ink-3 mt-0.5">STANDARD</div>
+                      <div className="text-[11px] font-mono ink-3 mt-0.5">GOOGLE MAPS</div>
                     </div>
                   </div>
                 </div>
