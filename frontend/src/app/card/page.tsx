@@ -133,7 +133,14 @@ export default function CardPage() {
         }}
       />
 
-      <TopBar balance={bal} delta={wallet.delta} tone={low ? "low" : "normal"} />
+      <TopBar
+        balance={bal}
+        delta={wallet.delta}
+        tone={low ? "low" : "normal"}
+        address={wallet.address}
+        mode={wallet.mode}
+        onDisconnect={wallet.disconnect}
+      />
 
       <div className="absolute left-3 right-3 top-[112px] bottom-[102px] z-20 overflow-y-auto max-w-[420px] mx-auto pb-4">
         <div

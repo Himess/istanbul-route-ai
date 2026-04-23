@@ -52,7 +52,14 @@ export default function ActivityPage() {
   return (
     <MobileShell>
     <div className="relative w-full h-full overflow-y-auto bg-ivory pb-[120px]">
-      <TopBar balance={wallet.balance} delta={wallet.delta} tone={wallet.status === "low" ? "low" : "normal"} />
+      <TopBar
+        balance={wallet.balance}
+        delta={wallet.delta}
+        tone={wallet.status === "low" ? "low" : "normal"}
+        address={wallet.address}
+        mode={wallet.mode}
+        onDisconnect={wallet.disconnect}
+      />
 
       <div className="absolute left-3 right-3 top-[112px] z-20 max-w-[420px] mx-auto">
         <div className="px-2 pt-1 pb-4 flex items-center justify-between">

@@ -99,7 +99,14 @@ export default function ParkPage() {
         }}
       />
 
-      <TopBar balance={wallet.balance} delta={wallet.delta} tone={wallet.status === "low" ? "low" : "normal"} />
+      <TopBar
+        balance={wallet.balance}
+        delta={wallet.delta}
+        tone={wallet.status === "low" ? "low" : "normal"}
+        address={wallet.address}
+        mode={wallet.mode}
+        onDisconnect={wallet.disconnect}
+      />
 
       <div className="absolute top-[112px] left-3 right-3 z-20 max-w-[420px] mx-auto">
         <div className="bg-paper/95 backdrop-blur-xl rounded-[22px] border border-line-2 shadow-2 px-4 py-3">

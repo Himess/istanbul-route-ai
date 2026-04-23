@@ -187,6 +187,9 @@ export default function DrivePage() {
             balance={wallet.balance}
             delta={wallet.delta}
             tone={wallet.status === "low" ? "low" : "normal"}
+            address={wallet.address}
+            mode={wallet.mode}
+            onDisconnect={wallet.disconnect}
           />
         )}
 
