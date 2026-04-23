@@ -27,8 +27,10 @@ export function useVehicleStream() {
         });
         socket.on("connect", () => { if (alive) { setConnected(true); retryRef.current = 0; } });
         socket.on("disconnect", () => { if (alive) setConnected(false); });
-        socket.on("vehicle_update", (data: MunicipalVehicle[]) => {
-          if (alive) setVehicles(data.slice(0, 80));
+        socket.on("vehicle_update", (data: MunicipalVehicle[] | { vehicles?: MunicipalVehicle[] }) => {
+          if (!alive) return;
+          const list = Array.isArray(data) ? data : (data?.vehicles ?? []);
+          setVehicles(list.slice(0, 150));
         });
       } catch {
         // socket.io-client not installed — skip

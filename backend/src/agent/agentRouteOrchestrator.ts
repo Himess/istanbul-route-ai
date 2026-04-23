@@ -19,6 +19,9 @@ import type { FunctionCall, Part } from "@google/genai";
 import { ROUTE_AGENT_TOOLS } from "./toolSchemas.js";
 import { executeTool } from "./tools.js";
 import { settleAgentToolCall } from "./agentSettlement.js";
+import { recordPayment } from "../routes/dashboardRoutes.js";
+
+const AGENT_ADDRESS_HINT = "0xAgent…";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
@@ -201,6 +204,18 @@ Decide which route to recommend. Use tools only when they would meaningfully cha
         try {
           result = await executeTool(name, args);
           txRecord = await settleAgentToolCall(name, args).catch(() => txRecord);
+          // Surface successful on-chain settlements in the Municipality feed.
+          if (txRecord.txType === "onchain" && txRecord.txHash) {
+            recordPayment({
+              id: `agent_${txRecord.txHash.slice(2, 12)}_${Date.now()}`,
+              txHash: txRecord.txHash,
+              from: AGENT_ADDRESS_HINT,
+              endpoint: `agent:${name}`,
+              amount: "0.0001",
+              timestamp: Date.now(),
+              zone: "-",
+            });
+          }
         } catch (err) {
           result = { error: err instanceof Error ? err.message : String(err) };
           txRecord.txType = "failed";

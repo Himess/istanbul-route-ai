@@ -52,6 +52,25 @@ class GatewayService {
     }
   }
 
+  /**
+   * Read a specific user's wallet + Gateway USDC balance on Arc.
+   */
+  async getBalancesForAddress(address: `0x${string}`) {
+    if (!this.client) return { wallet: "0", gateway: "0", gatewayAvailable: "0", address };
+    try {
+      const balances = await this.client.getBalances(address);
+      return {
+        address,
+        wallet: balances.wallet.formatted,
+        gateway: balances.gateway.formattedAvailable,
+        gatewayAvailable: balances.gateway.formattedAvailable,
+      };
+    } catch (err) {
+      console.error("[Gateway] Per-user balance check failed:", err instanceof Error ? err.message : err);
+      return { wallet: "0", gateway: "0", gatewayAvailable: "0", address };
+    }
+  }
+
   async deposit(amount: string) {
     if (!this.client) throw new Error("Gateway not initialized");
 

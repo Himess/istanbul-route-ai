@@ -79,7 +79,7 @@ export function createGatewayRoutes(): Router {
 
   /**
    * GET /api/gateway/balances
-   * Get wallet + gateway USDC balances.
+   * Get wallet + gateway USDC balances (backend's own wallet).
    */
   router.get("/balances", async (_req: Request, res: Response) => {
     try {
@@ -89,6 +89,43 @@ export function createGatewayRoutes(): Router {
       const message = err instanceof Error ? err.message : String(err);
       res.status(500).json({ success: false, error: message });
     }
+  });
+
+  /**
+   * GET /api/gateway/balance/:address
+   * Per-user USDC balance on Arc (wallet + Gateway).
+   */
+  router.get("/balance/:address", async (req: Request, res: Response) => {
+    const address = String(req.params.address || "").trim();
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      res.status(400).json({ success: false, error: "Invalid address" });
+      return;
+    }
+    try {
+      const balances = await gatewayService.getBalancesForAddress(address as `0x${string}`);
+      res.json({ success: true, ...balances });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
+  /**
+   * GET /api/gateway/contracts
+   * Public — reveal Gateway Wallet + USDC contract addresses on Arc
+   * so the frontend can construct deposit transactions directly.
+   */
+  router.get("/contracts", (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      chain: "arcTestnet",
+      chainId: 5042002,
+      usdc: "0x3600000000000000000000000000000000000000",
+      gatewayWallet: "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+      gatewayMinter: "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
+      sellerAddress: process.env.GATEWAY_SELLER_ADDRESS
+        || "0xF505e2E71df58D7244189072008f25f6b6aaE5ae",
+    });
   });
 
   return router;

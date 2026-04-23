@@ -8,6 +8,7 @@ import { MicroSpark } from "@/components/design/MicroSpark";
 import { HaloDot } from "@/components/design/HaloDot";
 import { useSmartWallet } from "@/hooks/useSmartWallet";
 import { MobileShell } from "@/components/design/MobileShell";
+import { DepositModal } from "@/components/design/DepositModal";
 import { BACKEND_URL } from "@/lib/constants";
 
 interface LedgerEntry {
@@ -19,9 +20,12 @@ interface LedgerEntry {
   signalEmoji?: string;
 }
 
-function TopUpChip({ amount, popular }: { amount: string; popular?: boolean }) {
+function TopUpChip({ amount, popular, onClick }: { amount: string; popular?: boolean; onClick?: () => void }) {
   return (
-    <button className="flex-1 rounded-2xl border border-line bg-paper py-3 flex flex-col items-center gap-0.5 hover:bg-ivory-2 transition-colors relative">
+    <button
+      onClick={onClick}
+      className="flex-1 rounded-2xl border border-line bg-paper py-3 flex flex-col items-center gap-0.5 hover:bg-ivory-2 transition-colors relative active:scale-[0.98]"
+    >
       {popular && (
         <span className="absolute -top-2 right-2 chip" style={{ background: "var(--iris)", color: "#fff" }}>
           POPULAR
@@ -64,6 +68,13 @@ function LedgerRow({ when, label, kind, amount, hash, signalEmoji }: LedgerEntry
 export default function CardPage() {
   const wallet = useSmartWallet();
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("10.00");
+
+  const openDeposit = (amount: string) => {
+    setDepositAmount(amount);
+    setDepositOpen(true);
+  };
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/dashboard/payments`)
@@ -182,14 +193,21 @@ export default function CardPage() {
             {low ? "Top up · recommended 10.00" : "Top up"}
           </div>
           <div className="flex gap-2">
-            <TopUpChip amount="5.00" />
-            <TopUpChip amount="10.00" popular />
-            <TopUpChip amount="25.00" />
-            <TopUpChip amount="Custom" />
+            <TopUpChip amount="5.00"  onClick={() => openDeposit("5.00")} />
+            <TopUpChip amount="10.00" popular onClick={() => openDeposit("10.00")} />
+            <TopUpChip amount="25.00" onClick={() => openDeposit("25.00")} />
+            <TopUpChip amount="Custom" onClick={() => openDeposit("10.00")} />
           </div>
-          <div className="text-[10px] font-mono ink-3 mt-2 text-center">
-            Send USDC to your address · or faucet on Arc testnet
-          </div>
+          {wallet.walletBalance > 0 && (
+            <div className="text-[10px] font-mono ink-3 mt-2 text-center">
+              Wallet USDC ready to deposit: {wallet.walletBalance.toFixed(4)}
+            </div>
+          )}
+          {wallet.walletBalance === 0 && (
+            <div className="text-[10px] font-mono ink-3 mt-2 text-center">
+              No USDC in wallet — <a href="https://faucet.circle.com" target="_blank" rel="noreferrer" className="underline text-teal-ink">get testnet USDC</a>
+            </div>
+          )}
         </div>
 
         <div className="mt-5 bg-paper border border-line rounded-[22px] px-4 py-3">
@@ -218,6 +236,14 @@ export default function CardPage() {
           Sign out
         </button>
       </div>
+
+      <DepositModal
+        open={depositOpen}
+        onClose={() => setDepositOpen(false)}
+        userAddress={wallet.address}
+        initialAmount={depositAmount}
+        onDone={() => { setTimeout(() => wallet.refreshBalance(), 1500); }}
+      />
 
       <BottomNav />
     </div>

@@ -4,6 +4,31 @@ import { VehicleSimulator } from "../simulator/vehicleSimulator.js";
 import { recordPayment } from "../routes/dashboardRoutes.js";
 import { eventStream, ContractPayment } from "../services/eventStream.js";
 import { demoSimulator } from "../services/demoSimulator.js";
+import { ibbClient } from "../data/ibbClient.js";
+import { detectZone } from "../data/istanbulDistricts.js";
+
+/**
+ * Combines the municipal simulator fleet (ambulances, police, sanitation,
+ * service) with the real IETT bus feed pulled from the IBB SOAP API.
+ * The simulator is kept ONLY for the non-transit vehicle types; all buses
+ * shown on the map are real live IETT vehicles.
+ */
+async function collectLiveVehicles(simulator: VehicleSimulator) {
+  const sim = simulator.getPublicData().filter((v) => v.type !== "bus");
+  const realBuses = await ibbClient.getBusPositions().catch(() => []);
+  const busesMapped = realBuses.slice(0, 120).map((b) => ({
+    id: `iett-${b.id}`,
+    type: "bus" as const,
+    lat: b.lat,
+    lng: b.lng,
+    speed: b.speed,
+    heading: 0,
+    zone: detectZone(b.lat, b.lng),
+    status: (b.speed > 2 ? "moving" : "stopped") as "moving" | "stopped",
+    source: "ibb" as const,
+  }));
+  return [...busesMapped, ...sim];
+}
 
 const ZONES = [
   "Eminonu",
@@ -57,29 +82,37 @@ export function setupWebSocket(
     },
   });
 
+  // Cache the blended vehicle list; refreshed every 30s from the IBB API.
+  let cachedVehicles: Awaited<ReturnType<typeof collectLiveVehicles>> = [];
+  async function refreshVehicleCache() {
+    try {
+      cachedVehicles = await collectLiveVehicles(simulator);
+    } catch {
+      cachedVehicles = simulator.getPublicData();
+    }
+  }
+  refreshVehicleCache();
+  setInterval(refreshVehicleCache, 30_000);
+
   io.on("connection", (socket) => {
     console.log(`[WS] Client connected: ${socket.id}`);
-
-    // Send initial vehicle data
     socket.emit("vehicle_update", {
       timestamp: Date.now(),
-      vehicles: simulator.getPublicData(),
+      vehicles: cachedVehicles,
     });
-
     socket.on("disconnect", () => {
       console.log(`[WS] Client disconnected: ${socket.id}`);
     });
   });
 
-  // Broadcast vehicle updates every 500ms
-  // Track which clients have focus for potential debouncing
+  // Broadcast updates every 2s. Municipal non-transit fleet moves constantly;
+  // IETT bus coords refresh from the IBB cache every 30s.
   setInterval(() => {
-    const publicData = simulator.getPublicData();
     io.emit("vehicle_update", {
       timestamp: Date.now(),
-      vehicles: publicData,
+      vehicles: cachedVehicles,
     });
-  }, 500);
+  }, 2_000);
 
   // --- Real contract payment events ---
   // When eventStream detects a new on-chain payment, broadcast it

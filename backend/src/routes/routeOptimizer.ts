@@ -6,6 +6,8 @@ import { calculateRoute } from "../services/routingService.js";
 import { osrmService } from "../services/osrmService.js";
 import { runRouteAgent } from "../agent/agentRouteOrchestrator.js";
 import type { OsrmAlternative } from "../agent/agentRouteOrchestrator.js";
+import { recordPayment } from "./dashboardRoutes.js";
+import { detectZone } from "../data/istanbulDistricts.js";
 
 export function createRouteOptimizerRoutes(simulator: VehicleSimulator): Router {
   const router = Router();
@@ -107,6 +109,21 @@ export function createRouteOptimizerRoutes(simulator: VehicleSimulator): Router 
     }
 
     try {
+      // Surface the Gateway-settled payment (from the middleware) in the
+      // Municipality feed so the dashboard shows user-paid route queries live.
+      const payment = (req as PaymentRequest).payment;
+      if (payment?.transaction && payment.verified) {
+        recordPayment({
+          id: `route_${payment.transaction.slice(2, 12)}_${Date.now()}`,
+          txHash: payment.transaction,
+          from: payment.payer || "0x0",
+          endpoint: "/api/route",
+          amount: "0.0005",
+          timestamp: Date.now(),
+          zone: `${detectZone(from.lat, from.lng)} → ${detectZone(to.lat, to.lng)}`,
+        });
+      }
+
       // Base routing — OSRM alternatives + real-data scoring
       const result = await calculateRoute(from, to, simulator);
 
