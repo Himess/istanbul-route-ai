@@ -19,7 +19,7 @@
 
 - **Per-API Monetization Engine** — APIs charge per request using USDC at high frequency.
 - **Agent-to-Agent Payment Loop** — Gemini-driven route agent pays internal data tools per decision.
-- **Google Prize Track** — Uses Gemini 2.5/3 Flash with Function Calling for adaptive route reasoning.
+- **Google Prize Track** — Uses Gemini 3 Flash with Function Calling for adaptive route reasoning.
 
 ## Why IstanbulRoute?
 
@@ -57,7 +57,7 @@ This model is **impossible** on Ethereum. Circle Nanopayments + Arc make it viab
 ## Silent Agent — Gemini Function Calling
 
 The user experience is unchanged: click A, click B, tap Go. The *behind-the-scenes*
-experience is: **Gemini 3 / 2.5 Flash** takes the three OSRM alternatives and
+experience is: **Gemini 3 Flash** takes the three OSRM alternatives and
 decides — adaptively — which real-time signals to pull before picking a winner.
 
 **Every tool call the agent issues is an Arc settlement.** Short off-peak hops
@@ -81,7 +81,7 @@ Nothing is hard-coded — the LLM picks, the backend pays, the chain settles.
 POST /api/route  { from: Taksim, to: Kadıköy }
 
 agent: {
-  modelId: "gemini-2.5-flash",
+  modelId: "gemini-3-flash-preview",
   chosenRouteIndex: 0,
   rationale: "Route A is recommended as it is off-peak with no reported
               incidents on the direct Bosphorus Bridge corridor.",
@@ -136,7 +136,7 @@ Circle Console verification: [console.circle.com/wallets/dev/transactions](https
 | **Circle Bridge Kit** | `@circle-fin/bridge-kit` CCTP V2 transfers | ✅ Arc Testnet |
 | **circlefin/skills** | `use-arc`, `use-gateway`, `use-developer-controlled-wallets` | ✅ Dev guidance |
 | **x402 Protocol** | `@x402/fetch`, `@x402/core` HTTP-native payments | ✅ Auto 402 handling |
-| **Google Gemini** | `@google/genai` Function Calling orchestrator | ✅ 2.5 Flash / 3 Flash Preview |
+| **Google Gemini** | `@google/genai` Function Calling orchestrator | ✅ Gemini 3 Flash Preview |
 
 ## Smart Contracts (Arc Testnet)
 
@@ -274,7 +274,7 @@ PORT=3001
 
 # Silent Agent (Gemini Function Calling)
 GEMINI_API_KEY=<aistudio.google.com key>
-GEMINI_MODEL=gemini-2.5-flash        # or gemini-3-flash-preview
+GEMINI_MODEL=gemini-3-flash-preview   # Gemini 3 Flash (recommended for transactional/payment agents)
 AGENT_TX_MODE=simulated               # or "onchain" for submission demo
 AGENT_PRIVATE_KEY=<funded agent wallet for onchain mode>
 ```

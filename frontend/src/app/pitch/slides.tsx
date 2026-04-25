@@ -576,7 +576,7 @@ const Slide11: ComponentType = () => {
 
 const Slide12: ComponentType = () => {
   const items = [
-    { emoji: "🤖", t: "Gemini 2.5/3 Flash", d: "Function Calling · 6 tools" },
+    { emoji: "🤖", t: "Gemini 3 Flash", d: "Function Calling · 6 tools" },
     { emoji: "🏛️", t: "İBB Open Data", d: "Real traffic congestion index" },
     { emoji: "🚌", t: "İETT Live", d: "Real-time municipal bus positions" },
     { emoji: "🅿️", t: "ISPARK", d: "262+ lots · live occupancy" },

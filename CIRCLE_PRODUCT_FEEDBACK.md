@@ -12,7 +12,7 @@ Arc (Testnet), USDC (as both native gas and transfer currency), Circle Nanopayme
 
 ## Use Case
 
-Istanbul Route AI is an agent-native municipal traffic data marketplace. A silent Gemini 2.5 Flash agent picks the driver's route using live Istanbul fleet telemetry — İBB traffic index, IETT bus density, incidents, weather, ISPARK parking, and time-of-day. Each of these six tools is paywalled with x402 at $0.0001 per call. A full route query costs the user $0.0005 and produces 5–7 real on-chain transactions on Arc.
+Istanbul Route AI is an agent-native municipal traffic data marketplace. A silent Gemini 3 Flash agent picks the driver's route using live Istanbul fleet telemetry — İBB traffic index, IETT bus density, incidents, weather, ISPARK parking, and time-of-day. Each of these six tools is paywalled with x402 at $0.0001 per call. A full route query costs the user $0.0005 and produces 5–7 real on-chain transactions on Arc.
 
 We chose the Circle stack because it is the only combination that makes this economically and experientially viable:
 

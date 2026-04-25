@@ -15,7 +15,7 @@ primary_region = "fra"  # Frankfurt — closest to Turkey / low latency
   PARKING_CONTRACT_ADDRESS = "0x198be13482770fa01e36ae199f8e6873ad2f7b91"
   OSRM_URL = "https://router.project-osrm.org"
   ROUTE_VEHICLE_RADIUS_METERS = "300"
-  GEMINI_MODEL = "gemini-2.5-flash"
+  GEMINI_MODEL = "gemini-3-flash-preview"
   AGENT_TX_MODE = "simulated"
 
 [http_service]

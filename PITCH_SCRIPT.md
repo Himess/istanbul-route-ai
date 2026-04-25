@@ -132,7 +132,7 @@ Slides live at https://istanbul-route-ai.vercel.app/pitch — press **F** for fu
 
 **Voice-over (≈55 words):**
 
-> "And the intelligence layer. Gemini 2.5 Flash with Function Calling orchestrates six data tools. İBB Open Data supplies the traffic index. İETT provides live bus positions. ISPARK feeds 262 parking lots with real-time occupancy. Open-Meteo gives weather. OSRM routes on the real road network. No mocks, real city telemetry throughout."
+> "And the intelligence layer. Gemini 3 Flash with Function Calling orchestrates six data tools. İBB Open Data supplies the traffic index. İETT provides live bus positions. ISPARK feeds 262 parking lots with real-time occupancy. Open-Meteo gives weather. OSRM routes on the real road network. No mocks, real city telemetry throughout."
 
 ---
 
